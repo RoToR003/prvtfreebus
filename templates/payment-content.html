@@ -1,0 +1,137 @@
+
+    <div class="header">
+        <div class="header-left">
+            <button class="back-btn" data-page="index">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="header-title">Оплата проїзду</div>
+        </div>
+        
+        <div class="header-right-icon" data-page="index" style="cursor: pointer;">
+            <img src="https://i.ibb.co/ycpRSNp5/Picsart-26-01-29-17-42-01-646.jpg" alt="Archive">
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <div class="tab active">Квиток</div>
+            <div class="tab">Проїзний</div>
+        </div>
+    </div>
+
+    <div class="ticket-selection-card">
+        <div class="ticket-top-row">
+            <div class="ticket-info">
+                <div class="custom-checkbox">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M5 12l5 5L20 7" />
+                    </svg>
+                </div>
+                <div class="ticket-text-group">
+                    <div class="ticket-name">Проїзд</div>
+                    <div class="ticket-desc">Трамвай, Тролейбус</div>
+                </div>
+            </div>
+            <div class="ticket-price">12.00 UAH</div>
+        </div>
+
+        <div class="quantity-label">Кількість квитків</div>
+
+        <div class="quantity-controls">
+            <button class="qty-btn minus" id="btn-minus">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12H19" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+            </button>
+            
+            <input type="text" class="qty-input" value="1" readonly id="qty-input">
+            
+            <button class="qty-btn plus" id="btn-plus">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5V19" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M5 12H19" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="transport-input-wrapper">
+        <label class="transport-label">Номер транспорту</label>
+        <input type="tel" inputmode="numeric" pattern="[0-9]*" class="transport-input" placeholder="Введіть номер">
+    </div>
+
+    <div class="fixed-bottom-sheet">
+        <div class="payment-summary">
+            <div class="summary-row">
+                <div class="summary-label">До сплати</div>
+                <div class="summary-value" id="total-price">12.00 UAH</div>
+            </div>
+
+            <div class="cards-label-row">
+                <div class="summary-label">З картки</div>
+                <div class="all-cards-link">
+                    Усі 
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5dc12d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="cards-carousel">
+            <div class="card-item previous"></div>
+
+            <div class="card-item selected">
+                <div class="card-img-box">
+                    <img src="https://i.ibb.co/hTyK6Tx/Picsart-26-01-29-17-41-41-839.jpg" alt="Visa Card">
+                </div>
+                
+                <div class="card-details">
+                    <div class="card-title-row">
+                        <img src="https://i.ibb.co/0y9D9mD8/Picsart-26-01-29-18-17-06-761.jpg" alt="Visa" class="visa-text-logo">
+                        <span class="card-text-name">Картка для виплат</span>
+                    </div>
+                    
+                    <div class="card-number">•••• 9840 | UA53 •••• 8020854</div>
+                    <div class="card-balance">0.47 UAH</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-btn-wrapper">
+            <button class="buy-btn">Купити</button>
+        </div>
+    </div>
+
+    <script>
+        // Логіка лічильника пасажирів
+        const input = document.getElementById('qty-input');
+        const minusBtn = document.getElementById('btn-minus');
+        const plusBtn = document.getElementById('btn-plus');
+        const totalPriceEl = document.getElementById('total-price');
+        const pricePerTicket = 12.00;
+
+        plusBtn.addEventListener('click', () => {
+            let val = parseInt(input.value);
+            val++;
+            input.value = val;
+            updateTotal(val);
+        });
+
+        minusBtn.addEventListener('click', () => {
+            let val = parseInt(input.value);
+            if (val > 1) {
+                val--;
+                input.value = val;
+                updateTotal(val);
+            }
+        });
+
+        function updateTotal(qty) {
+            const total = (qty * pricePerTicket).toFixed(2);
+            totalPriceEl.textContent = `${total} UAH`;
+        }
+    </script>

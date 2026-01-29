@@ -447,7 +447,7 @@ function initQRPage() {
                 // Зберегти мітку про сканування
                 sessionStorage.setItem('qr_scanned', 'true');
                 // Перейти на сторінку оплати
-                window.location.href = 'payment.html';
+                goToPage('payment');
             }
         });
     }
@@ -501,7 +501,7 @@ function initPaymentPage() {
             sessionStorage.removeItem('qr_scanned');
             
             // Перейти на головну сторінку
-            window.location.href = 'index.html';
+            goToPage('index');
         });
         
         // Валідація вводу - тільки цифри
@@ -1150,6 +1150,127 @@ function initDoubleClickFullscreen() {
 }
 
 // ============================================
+// SPA ROUTER
+// ============================================
+
+const SPA = {
+    container: null,
+    pageCache: {},
+    currentPage: null,
+    
+    init() {
+        this.container = document.getElementById('app-container');
+        
+        if (!this.container) {
+            // Not in SPA mode, exit
+            return false;
+        }
+        
+        // Перехоплювати кліки по посиланнях
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('[data-page]');
+            if (link) {
+                e.preventDefault();
+                this.navigate(link.dataset.page);
+            }
+        });
+        
+        // Обробка кнопки "Назад"
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.page) {
+                this.loadPage(e.state.page, false);
+            }
+        });
+        
+        // Завантажити початкову сторінку
+        const hash = window.location.hash.slice(1); // Remove #
+        const initialPage = hash || 'transport';
+        this.loadPage(initialPage, false);
+        
+        return true;
+    },
+    
+    navigate(page) {
+        this.loadPage(page, true);
+    },
+    
+    async loadPage(page, pushState = true) {
+        this.showTransition();
+        
+        try {
+            let content;
+            
+            if (this.pageCache[page]) {
+                content = this.pageCache[page];
+            } else {
+                const response = await fetch(`templates/${page}-content.html`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${page}`);
+                }
+                content = await response.text();
+                this.pageCache[page] = content;
+            }
+            
+            this.container.innerHTML = content;
+            
+            if (pushState) {
+                history.pushState({ page }, '', `#${page}`);
+            }
+            
+            this.initPageFunctions(page);
+            this.hideTransition();
+            this.currentPage = page;
+            
+        } catch (error) {
+            console.error('Помилка завантаження сторінки:', error);
+            this.hideTransition();
+        }
+    },
+    
+    initPageFunctions(page) {
+        switch(page) {
+            case 'index': 
+                initIndexPage(); 
+                break;
+            case 'payment': 
+                initPaymentPage(); 
+                break;
+            case 'qr': 
+                initQRPage(); 
+                break;
+            case 'settings': 
+                initSettingsPage(); 
+                break;
+            case 'transport': 
+                // Transport page has no special init
+                break;
+        }
+    },
+    
+    showTransition() {
+        const overlay = document.getElementById('page-transition');
+        if (overlay) overlay.classList.add('active');
+    },
+    
+    hideTransition() {
+        const overlay = document.getElementById('page-transition');
+        if (overlay) {
+            setTimeout(() => overlay.classList.remove('active'), 50);
+        }
+    }
+};
+
+// Глобальна функція для навігації
+function goToPage(page) {
+    if (SPA.container) {
+        SPA.navigate(page);
+    } else {
+        // Fallback for non-SPA mode
+        window.location.href = `${page}.html`;
+    }
+}
+
+// ============================================
 // АВТОМАТИЧНА ІНІЦІАЛІЗАЦІЯ
 // ============================================
 
@@ -1166,18 +1287,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Відстежувати зміни fullscreen
     monitorFullscreenChanges();
     
-    const currentPage = window.location.pathname.split('/').pop();
+    // Спробувати ініціалізувати SPA
+    const isSPA = SPA.init();
     
-    // Визначити поточну сторінку та ініціалізувати відповідний функціонал
-    if (currentPage === 'index.html' || currentPage === '') {
-        initIndexPage();
-    } else if (currentPage === 'payment.html') {
-        initPaymentPage();
-    } else if (currentPage === 'qr.html') {
-        initQRPage();
-    } else if (currentPage === 'settings.html') {
-        initSettingsPage();
+    if (!isSPA) {
+        // Стара логіка для окремих HTML файлів (зворотна сумісність)
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        // Визначити поточну сторінку та ініціалізувати відповідний функціонал
+        if (currentPage === 'index.html' || currentPage === '') {
+            initIndexPage();
+        } else if (currentPage === 'payment.html') {
+            initPaymentPage();
+        } else if (currentPage === 'qr.html') {
+            initQRPage();
+        } else if (currentPage === 'settings.html') {
+            initSettingsPage();
+        }
     }
+
     
     // Ініціалізувати подвійний клік для fullscreen на всіх сторінках
     initDoubleClickFullscreen();

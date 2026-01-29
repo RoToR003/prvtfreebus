@@ -1,0 +1,154 @@
+
+    <div class="header">
+        <div class="header-left">
+            <button class="back-btn" data-page="transport">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="header-title">Налаштування</div>
+        </div>
+    </div>
+
+    <!-- СТАТИСТИКА -->
+    <div class="stats-section">
+        <div class="section-title">Статистика поїздок</div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Сьогодні</div>
+                <div class="stat-value" id="stat-today">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">За тиждень</div>
+                <div class="stat-value" id="stat-week">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">За місяць</div>
+                <div class="stat-value" id="stat-month">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">За весь час</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+        </div>
+
+        <div class="stat-card-full">
+            <div>
+                <div class="stat-label">Всього витрачено</div>
+            </div>
+            <div class="total-spent" id="total-spent">0.00 UAH</div>
+        </div>
+        
+        <div class="stat-card-full" style="margin-top: 12px;">
+            <div>
+                <div class="stat-label">Розмір кешу</div>
+            </div>
+            <div class="total-spent" id="cache-size" style="font-size: 20px; color: var(--text-main);">0 KB</div>
+        </div>
+    </div>
+
+    <!-- НАЛАШТУВАННЯ -->
+    <div class="settings-section">
+        <div class="section-title">Основні</div>
+
+        <div class="setting-item" onclick="toggleLocalStorage()">
+            <div class="setting-info">
+                <div class="setting-label">Локальне збереження</div>
+                <div class="setting-description">Зберігати квитки на пристрої</div>
+            </div>
+            <div class="toggle-switch active" id="storage-toggle">
+                <div class="toggle-slider"></div>
+            </div>
+        </div>
+
+        <div class="setting-item" onclick="toggleFullscreen()">
+            <div class="setting-info">
+                <div class="setting-label">Повноекранний режим</div>
+                <div class="setting-description">Подвійне натискання для активації</div>
+            </div>
+        </div>
+        
+        <div class="setting-item" onclick="openCameraSelector()">
+            <div class="setting-info">
+                <div class="setting-label">Вибір камери</div>
+                <div class="setting-description" id="camera-description">Автоматично</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 5l7 7-7 7" stroke="#a0a0a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- НЕБЕЗПЕЧНА ЗОНА -->
+    <div class="danger-section">
+        <div class="section-title">Небезпечна зона</div>
+
+        <div class="danger-item" onclick="showClearHistoryModal()">
+            <div class="danger-label">Очистити історію</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        
+        <div class="danger-item" onclick="clearCacheAndNotify()" style="margin-top: 12px;">
+            <div class="danger-label">Очистити кеш</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 12h18M3 6h18M3 18h18" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- ІНФОРМАЦІЯ -->
+    <div class="info-block">
+        <div class="info-text">
+            💡 <strong>Про кеш:</strong> Дані картки (баланс, номер) кешуються на 24 години для швидкості роботи. Кеш автоматично оновлюється щодоби.
+        </div>
+    </div>
+    
+    <div class="info-block">
+        <div class="info-text">
+            💡 <strong>Підказка:</strong> Натисніть двічі на порожнє місце в будь-якому місці додатку, щоб увімкнути повноекранний режим.
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕННЯ -->
+    <div id="clearModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Очистити історію?</div>
+            <div class="modal-text">
+                Оберіть що саме ви хочете видалити:
+            </div>
+            <div class="modal-buttons" style="flex-direction: column; gap: 8px;">
+                <button class="modal-btn btn-confirm" onclick="confirmClearHistory(true)" style="background-color: #ff6b6b;">
+                    Видалити все
+                </button>
+                <button class="modal-btn btn-confirm" onclick="confirmClearHistory(false)" style="background-color: #ffa726;">
+                    Видалити квитки, залишити статистику
+                </button>
+                <button class="modal-btn btn-cancel" onclick="closeClearModal()">
+                    Скасувати
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНЕ ВІКНО ВИБОРУ КАМЕРИ -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Вибір камери</div>
+            <div class="modal-text">
+                Оберіть камеру для сканування QR-кодів:
+            </div>
+            <div id="camera-list" style="margin-bottom: 16px; max-height: 300px; overflow-y: auto;">
+                <!-- Список камер буде додано динамічно -->
+            </div>
+            <button class="modal-btn btn-cancel" onclick="closeCameraModal()" style="width: 100%;">
+                Закрити
+            </button>
+        </div>
+    </div>
