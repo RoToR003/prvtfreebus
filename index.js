@@ -532,17 +532,19 @@ function scanQRCode() {
         return;
     }
     
+    // Сканування ВСЬОГО екрану (не тільки рамки)
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = videoElement.videoWidth;
     canvas.height = videoElement.videoHeight;
-    context.drawImage(videoElement, 0, 0);
+    context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
     
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     
     if (typeof jsQR !== 'undefined') {
+        // Підвищена чутливість — спробувати обидва варіанти (нормальний та інвертований)
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert"
+            inversionAttempts: "attemptBoth"
         });
         
         if (code) {
@@ -550,7 +552,7 @@ function scanQRCode() {
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
-            window.location.href = 'payment.html';
+            goToPage('payment');
             return;
         }
     } else {
@@ -602,9 +604,13 @@ function switchQRCamera() {
 /**
  * Go to payment from QR page
  */
-function goToPaymentFromQR() {
+function goToPayment() {
+    // Зупинити камеру
+    stopQRCamera();
+    
     // Зберегти мітку про сканування
     sessionStorage.setItem('qr_scanned', 'true');
+    
     // Перейти на сторінку оплати
     goToPage('payment');
 }
@@ -623,20 +629,19 @@ function initQRPage() {
         switchBtn.addEventListener('click', switchQRCamera);
     }
     
-    // Setup payment button
+    // Setup payment button (кнопка ліхтарика)
     const paymentBtn = document.querySelector('.circle-btn[onclick*="goToPayment"]');
     if (paymentBtn) {
         paymentBtn.removeAttribute('onclick');
-        paymentBtn.addEventListener('click', goToPaymentFromQR);
+        paymentBtn.addEventListener('click', goToPayment);
     }
     
-    // При кліку на будь-яку область екрану переходимо на оплату
+    // При кліку на overlay також переходити на оплату
     const overlay = document.querySelector('.overlay');
     if (overlay) {
         overlay.addEventListener('click', function(e) {
-            // Якщо клік не на кнопку закриття або інші кнопки
             if (!e.target.closest('.icon-btn') && !e.target.closest('.circle-btn')) {
-                goToPaymentFromQR();
+                goToPayment();
             }
         });
     }
