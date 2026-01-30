@@ -552,7 +552,7 @@ function scanQRCode() {
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
-            window.location.href = 'payment.html';
+            goToPage('payment');
             return;
         }
     } else {
@@ -606,16 +606,13 @@ function switchQRCamera() {
  */
 function goToPayment() {
     // Зупинити камеру
-    if (qrCameraState) {
-        qrCameraState.scanningActive = false;
-    }
     stopQRCamera();
     
     // Зберегти мітку про сканування
     sessionStorage.setItem('qr_scanned', 'true');
     
     // Перейти на сторінку оплати
-    window.location.href = 'payment.html';
+    goToPage('payment');
 }
 
 /**
