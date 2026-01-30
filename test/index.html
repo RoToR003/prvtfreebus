@@ -3,464 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Е-Квиток Вінниця</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <title>ПриватБанк Транспорт</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #app-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+        
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
-    <div id="app"></div>
+    <div id="loading" class="loading">Завантаження...</div>
+    <iframe id="app-frame" src="about:blank"></iframe>
 
-    <!-- TEMPLATE: Transport Page -->
-    <template id="page-transport">
-        <div class="top-bar">
-            <button class="back-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-
-            <div class="header-content">
-                <div class="header-icon">
-                    <img src="https://i.ibb.co/cSMjFD5Y/Picsart-26-01-29-15-08-37-387.jpg" alt="Tickets">
-                </div>
-                <div class="page-title">Транспорт</div>
-            </div>
-        </div>
-
-        <div class="menu-list">
-            <div class="menu-item">
-                <div class="item-icon">
-                    <img src="https://i.ibb.co/23Nbdh39/Picsart-26-01-29-15-09-08-727.jpg" alt="Train">
-                </div>
-                <div class="item-text">Поїзд</div>
-            </div>
-
-            <div class="menu-item" data-page="settings">
-                <div class="item-icon">
-                    <img src="https://i.ibb.co/5gkP5ZBv/Picsart-26-01-29-15-09-59-963.jpg" alt="Plane">
-                </div>
-                <div class="item-text">Літак</div>
-            </div>
-
-            <div class="menu-item">
-                <div class="item-icon">
-                    <img src="https://i.ibb.co/v8p18zj/Picsart-26-01-29-15-18-22-163.jpg" alt="Bus">
-                </div>
-                <div class="item-text">Автобус</div>
-            </div>
-
-            <div class="menu-item" data-page="index">
-                <div class="item-icon">
-                    <img src="https://i.ibb.co/7JtyVry3/Picsart-26-01-29-15-19-07-001.jpg" alt="City Transport">
-                </div>
-                <div class="item-text">Міський транспорт</div>
-            </div>
-        </div>
-    </template>
-
-    <!-- TEMPLATE: Index/Archive Page -->
-    <template id="page-index">
-        <div class="header">
-            <button class="back-btn" data-page="transport">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-            <div class="header-title">Архів</div>
-        </div>
-
-        <div class="tabs-container">
-            <div class="tabs">
-                <div class="tab active">Квиток</div>
-                <div class="tab">Проїзний</div>
-            </div>
-        </div>
-
-        <!-- Картки квитків будуть генеруватися динамічно через JavaScript -->
-
-        <div class="footer-btn-container">
-            <button class="scan-btn" data-page="qr">Відсканувати QR-код</button>
-        </div>
-
-        <div id="infoModal" class="modal">
-            <div class="modal-content">
-                
-                <div class="modal-header-block">
-                    <button class="close-btn" onclick="closeModal()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M18 6L6 18" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M6 6L18 18" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <div class="modal-main-title">Дані отримувача</div>
-                </div>
-                
-                <div class="modal-card">
-                    <div class="modal-card-top">
-                        <div class="modal-card-title">Дані отримувача платежу</div>
-                        <button class="copy-btn" onclick="copyData()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="#5dc12d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" stroke="#5dc12d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <div class="modal-row">
-                        <div class="modal-label">Юридична особа</div>
-                        <div class="modal-value">КП ВІННИЦЬКА ТРАНСПОРТНА КОМПАНІЯ</div>
-                    </div>
-                    
-                    <div class="modal-row">
-                        <div class="modal-label">Код ЄДРПОУ</div>
-                        <div class="modal-value">03327925</div>
-                    </div>
-                    
-                    <div class="modal-row">
-                        <div class="modal-label">Зареєстровано</div>
-                        <div class="modal-value">28.10.1993</div>
-                    </div>
-                    
-                    <div class="modal-row">
-                        <div class="modal-label">Місце знаходження юридичної особи</div>
-                        <div class="modal-value">21037, м. Вінниця, вул.<br>Хмельницьке шосе, 29</div>
-                    </div>
-                    
-                    <div class="modal-row">
-                        <div class="modal-label">Телефон</div>
-                        <div class="modal-value">+38-067-435-05-25</div>
-                    </div>
-                </div>
-                
-                <button class="modal-confirm-btn" onclick="closeModal()">Зрозуміло</button>
-            </div>
-        </div>
-    </template>
-
-    <!-- TEMPLATE: QR Scanner Page -->
-    <template id="page-qr">
-        <video id="camera-stream" autoplay playsinline muted></video>
-        <div id="camera-fallback" class="camera-fallback"></div>
-
-        <div class="overlay">
-            <div class="top-bar">
-                <button class="icon-btn" data-page="index">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 6L6 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                
-                <div class="page-title">Сканування коду</div>
-                
-                <button class="icon-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="white"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="scan-frame-container">
-                <div class="scan-frame">
-                    <div class="corner top-left"></div>
-                    <div class="corner top-right"></div>
-                    <div class="corner bottom-left"></div>
-                    <div class="corner bottom-right"></div>
-                </div>
-            </div>
-
-            <div class="bottom-controls">
-                <div class="buttons-row">
-                    <button class="circle-btn" onclick="goToPaymentFromQR()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M7 2V13H10V22L17 10H13L13 2H7ZM17.59 5.41L15.47 3.29L3.29 15.47L5.41 17.59L17.59 5.41Z"/>
-                        </svg>
-                    </button>
-                    
-                    <button class="circle-btn" onclick="switchCamera()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 4V1L8 5L12 9V6C15.31 6 18 8.69 18 12C18 13.01 17.75 13.97 17.3 14.8L18.76 16.26C19.54 15.03 20 13.57 20 12C20 7.58 16.42 4 12 4ZM12 18C8.69 18 6 15.31 6 12C6 10.99 6.25 10.03 6.7 9.2L5.24 7.74C4.46 8.97 4 10.43 4 12C4 16.42 7.58 20 12 20V23L16 19L12 15V18Z"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="instruction-text">
-                    Щоб відсканувати QR-код, тримайте пристрій так, щоб код був у рамці
-                </div>
-            </div>
-        </div>
-    </template>
-
-    <!-- TEMPLATE: Payment Page -->
-    <template id="page-payment">
-        <div class="header">
-            <div class="header-left">
-                <button class="back-btn" data-page="transport">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <div class="header-title">Оплата проїзду</div>
-            </div>
+    <script>
+        const SPA = {
+            frame: null,
+            loading: null,
+            currentPage: null,
             
-            <div class="header-right-icon" data-page="index" style="cursor: pointer;">
-                <img src="https://i.ibb.co/ycpRSNp5/Picsart-26-01-29-17-42-01-646.jpg" alt="Archive">
-            </div>
-        </div>
-
-        <div class="tabs-container">
-            <div class="tabs">
-                <div class="tab active">Квиток</div>
-                <div class="tab">Проїзний</div>
-            </div>
-        </div>
-
-        <div class="ticket-selection-card">
-            <div class="ticket-top-row">
-                <div class="ticket-info">
-                    <div class="custom-checkbox">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M5 12l5 5L20 7" />
-                        </svg>
-                    </div>
-                    <div class="ticket-text-group">
-                        <div class="ticket-name">Проїзд</div>
-                        <div class="ticket-desc">Трамвай, Тролейбус</div>
-                    </div>
-                </div>
-                <div class="ticket-price">12.00 UAH</div>
-            </div>
-
-            <div class="quantity-label">Кількість квитків</div>
-
-            <div class="quantity-controls">
-                <button class="qty-btn minus" id="btn-minus">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M5 12H19" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                </button>
+            pages: {
+                'transport': '../transport.html',
+                'index': '../index.html',
+                'qr': '../qr.html',
+                'payment': '../payment.html',
+                'settings': '../settings.html'
+            },
+            
+            init() {
+                this.frame = document.getElementById('app-frame');
+                this.loading = document.getElementById('loading');
                 
-                <input type="text" class="qty-input" value="1" readonly id="qty-input">
+                // Слухаємо зміни hash
+                window.addEventListener('hashchange', () => this.onHashChange());
                 
-                <button class="qty-btn plus" id="btn-plus">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M12 5V19" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M5 12H19" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <div class="transport-input-wrapper">
-            <label class="transport-label">Номер транспорту</label>
-            <input type="tel" inputmode="numeric" pattern="[0-9]*" class="transport-input" placeholder="Введіть номер">
-        </div>
-
-        <div class="fixed-bottom-sheet">
-            <div class="payment-summary">
-                <div class="summary-row">
-                    <div class="summary-label">До сплати</div>
-                    <div class="summary-value" id="total-price">12.00 UAH</div>
-                </div>
-
-                <div class="cards-label-row">
-                    <div class="summary-label">З картки</div>
-                    <div class="all-cards-link">
-                        Усі 
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5dc12d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M6 9l6 6 6-6"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            <div class="cards-carousel">
-                <div class="card-item previous"></div>
-
-                <div class="card-item selected">
-                    <div class="card-img-box">
-                        <img src="https://i.ibb.co/hTyK6Tx/Picsart-26-01-29-17-41-41-839.jpg" alt="Visa Card">
-                    </div>
+                // Слухаємо повідомлення від iframe для навігації
+                window.addEventListener('message', (e) => this.onMessage(e));
+                
+                // Коли iframe завантажився
+                this.frame.addEventListener('load', () => this.onFrameLoad());
+                
+                // Початкова сторінка
+                const hash = window.location.hash.slice(1) || 'transport';
+                this.navigate(hash);
+            },
+            
+            navigate(page) {
+                if (!this.pages[page]) {
+                    page = 'transport';
+                }
+                
+                if (this.currentPage === page) return;
+                
+                this.showLoading();
+                window.location.hash = page;
+                this.frame.src = this.pages[page];
+                this.currentPage = page;
+            },
+            
+            onHashChange() {
+                const hash = window.location.hash.slice(1) || 'transport';
+                if (hash !== this.currentPage) {
+                    this.navigate(hash);
+                }
+            },
+            
+            onFrameLoad() {
+                this.hideLoading();
+                this.injectNavigationOverride();
+            },
+            
+            onMessage(e) {
+                if (e.data && e.data.type === 'navigate') {
+                    this.navigate(e.data.page);
+                }
+            },
+            
+            injectNavigationOverride() {
+                try {
+                    const frameDoc = this.frame.contentDocument || this.frame.contentWindow.document;
+                    const frameWin = this.frame.contentWindow;
                     
-                    <div class="card-details">
-                        <div class="card-title-row">
-                            <img src="https://i.ibb.co/0y9D9mD8/Picsart-26-01-29-18-17-06-761.jpg" alt="Visa" class="visa-text-logo">
-                            <span class="card-text-name">Картка для виплат</span>
-                        </div>
-                        
-                        <div class="card-number">•••• 9840 | UA53 •••• 8020854</div>
-                        <div class="card-balance">0.47 UAH</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="footer-btn-wrapper">
-                <button class="buy-btn">Купити</button>
-            </div>
-        </div>
-    </template>
-
-    <!-- TEMPLATE: Settings Page -->
-    <template id="page-settings">
-        <div class="header">
-            <div class="header-left">
-                <button class="back-btn" data-page="transport">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 12H4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 18L4 12L10 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-                <div class="header-title">Налаштування</div>
-            </div>
-        </div>
-
-        <!-- СТАТИСТИКА -->
-        <div class="stats-section">
-            <div class="section-title">Статистика поїздок</div>
+                    // Перехоплюємо кліки на посилання
+                    frameDoc.addEventListener('click', (e) => {
+                        const link = e.target.closest('a[href], button[onclick*="location"], [onclick*="href"]');
+                        if (link) {
+                            const href = link.getAttribute('href') || '';
+                            const onclick = link.getAttribute('onclick') || '';
+                            
+                            // Визначаємо сторінку
+                            let page = null;
+                            
+                            if (href.includes('transport.html')) page = 'transport';
+                            else if (href.includes('index.html')) page = 'index';
+                            else if (href.includes('qr.html')) page = 'qr';
+                            else if (href.includes('payment.html')) page = 'payment';
+                            else if (href.includes('settings.html')) page = 'settings';
+                            else if (onclick.includes('transport.html')) page = 'transport';
+                            else if (onclick.includes('index.html')) page = 'index';
+                            else if (onclick.includes('qr.html')) page = 'qr';
+                            else if (onclick.includes('payment.html')) page = 'payment';
+                            else if (onclick.includes('settings.html')) page = 'settings';
+                            
+                            if (page) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                                return false;
+                            }
+                        }
+                    }, true);
+                    
+                    // Перехоплюємо window.location зміни
+                    const originalLocationDescriptor = Object.getOwnPropertyDescriptor(frameWin, 'location');
+                    
+                    // Перевизначаємо goToPage якщо існує
+                    if (frameWin.goToPage) {
+                        const originalGoToPage = frameWin.goToPage;
+                        frameWin.goToPage = function(page) {
+                            window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                        };
+                    }
+                    
+                    // Перехоплюємо пряме присвоєння location.href
+                    const locationProxy = new Proxy({}, {
+                        set: (target, prop, value) => {
+                            if (prop === 'href') {
+                                let page = null;
+                                if (value.includes('transport.html')) page = 'transport';
+                                else if (value.includes('index.html')) page = 'index';
+                                else if (value.includes('qr.html')) page = 'qr';
+                                else if (value.includes('payment.html')) page = 'payment';
+                                else if (value.includes('settings.html')) page = 'settings';
+                                
+                                if (page) {
+                                    window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                                    return true;
+                                }
+                            }
+                            return Reflect.set(frameWin.location, prop, value);
+                        },
+                        get: (target, prop) => {
+                            const value = frameWin.location[prop];
+                            if (typeof value === 'function') {
+                                return value.bind(frameWin.location);
+                            }
+                            return value;
+                        }
+                    });
+                    
+                } catch (err) {
+                    console.log('Cannot inject navigation override:', err);
+                }
+            },
             
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Сьогодні</div>
-                    <div class="stat-value" id="stat-today">0</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">За тиждень</div>
-                    <div class="stat-value" id="stat-week">0</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">За місяць</div>
-                    <div class="stat-value" id="stat-month">0</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">За весь час</div>
-                    <div class="stat-value" id="stat-total">0</div>
-                </div>
-            </div>
-
-            <div class="stat-card-full">
-                <div>
-                    <div class="stat-label">Всього витрачено</div>
-                </div>
-                <div class="total-spent" id="total-spent">0.00 UAH</div>
-            </div>
+            showLoading() {
+                this.loading.classList.remove('hidden');
+            },
             
-            <div class="stat-card-full" style="margin-top: 12px;">
-                <div>
-                    <div class="stat-label">Розмір кешу</div>
-                </div>
-                <div class="total-spent" id="cache-size" style="font-size: 20px; color: var(--text-main);">0 KB</div>
-            </div>
-        </div>
-
-        <!-- НАЛАШТУВАННЯ -->
-        <div class="settings-section">
-            <div class="section-title">Основні</div>
-
-            <div class="setting-item" onclick="toggleLocalStorage()">
-                <div class="setting-info">
-                    <div class="setting-label">Локальне збереження</div>
-                    <div class="setting-description">Зберігати квитки на пристрої</div>
-                </div>
-                <div class="toggle-switch active" id="storage-toggle">
-                    <div class="toggle-slider"></div>
-                </div>
-            </div>
-
-            <div class="setting-item" onclick="toggleFullscreen()">
-                <div class="setting-info">
-                    <div class="setting-label">Повноекранний режим</div>
-                    <div class="setting-description">Подвійне натискання для активації</div>
-                </div>
-            </div>
-            
-            <div class="setting-item" onclick="openCameraSelector()">
-                <div class="setting-info">
-                    <div class="setting-label">Вибір камери</div>
-                    <div class="setting-description" id="camera-description">Автоматично</div>
-                </div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 5l7 7-7 7" stroke="#a0a0a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-        </div>
-
-        <!-- НЕБЕЗПЕЧНА ЗОНА -->
-        <div class="danger-section">
-            <div class="section-title">Небезпечна зона</div>
-
-            <div class="danger-item" onclick="showClearHistoryModal()">
-                <div class="danger-label">Очистити історію</div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            
-            <div class="danger-item" onclick="clearCacheAndNotify()" style="margin-top: 12px;">
-                <div class="danger-label">Очистити кеш</div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 12h18M3 6h18M3 18h18" stroke="#ff4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-        </div>
-
-        <!-- ІНФОРМАЦІЯ -->
-        <div class="info-block">
-            <div class="info-text">
-                💡 <strong>Про кеш:</strong> Дані картки (баланс, номер) кешуються на 24 години для швидкості роботи. Кеш автоматично оновлюється щодоби.
-            </div>
-        </div>
+            hideLoading() {
+                this.loading.classList.add('hidden');
+            }
+        };
         
-        <div class="info-block">
-            <div class="info-text">
-                💡 <strong>Підказка:</strong> Натисніть двічі на порожнє місце в будь-якому місці додатку, щоб увімкнути повноекранний режим.
-            </div>
-        </div>
-
-        <!-- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕННЯ -->
-        <div id="clearModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-title">Очистити історію?</div>
-                <div class="modal-text">
-                    Оберіть що саме ви хочете видалити:
-                </div>
-                <div class="modal-buttons" style="flex-direction: column; gap: 8px;">
-                    <button class="modal-btn btn-confirm" onclick="confirmClearHistory(true)" style="background-color: #ff6b6b;">
-                        Видалити все
-                    </button>
-                    <button class="modal-btn btn-confirm" onclick="confirmClearHistory(false)" style="background-color: #ffa726;">
-                        Видалити квитки, залишити статистику
-                    </button>
-                    <button class="modal-btn btn-cancel" onclick="closeClearModal()">
-                        Скасувати
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- МОДАЛЬНЕ ВІКНО ВИБОРУ КАМЕРИ -->
-        <div id="cameraModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-title">Вибір камери</div>
-                <div class="modal-text">
-                    Оберіть камеру для сканування QR-кодів:
-                </div>
-                <div id="camera-list" style="margin-bottom: 16px; max-height: 300px; overflow-y: auto;">
-                    <!-- Список камер буде додано динамічно -->
-                </div>
-                <button class="modal-btn btn-cancel" onclick="closeCameraModal()" style="width: 100%;">
-                    Закрити
-                </button>
-            </div>
-        </div>
-    </template>
-
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="app.js"></script>
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', () => SPA.init());
+    </script>
 </body>
 </html>
