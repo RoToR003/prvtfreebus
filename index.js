@@ -438,124 +438,76 @@ function displayTicketsOnIndexPage() {
 let qrCameraState = {
     currentFacingMode: 'environment',
     currentDeviceId: null,
-    html5QrCode: null,
-    isScanning: false
+    scanningActive: false
 };
 
 /**
  * Start the camera for QR scanning
  */
 async function startQRCamera() {
-    const qrReaderElement = document.getElementById('qr-reader');
+    const videoElement = document.getElementById('camera-stream');
     const fallbackElement = document.getElementById('camera-fallback');
     
-    if (!qrReaderElement || !fallbackElement) return;
+    if (!videoElement || !fallbackElement) return;
     
-    // Prevent starting if already scanning
-    if (qrCameraState.isScanning) {
-        return;
-    }
-
     try {
-        // Check if Html5Qrcode is available
-        if (typeof Html5Qrcode === 'undefined') {
-            console.error('Html5Qrcode library not loaded');
-            showQRCameraFallback();
-            return;
-        }
-
-        // Initialize html5-qrcode scanner
-        if (!qrCameraState.html5QrCode) {
-            qrCameraState.html5QrCode = new Html5Qrcode("qr-reader");
-        }
-
-        // Hide video element at the start
-        const videoElement = document.getElementById('camera-stream');
-        if (videoElement) {
-            videoElement.style.display = 'none';
-        }
-
-        // Get saved camera device ID
-        const savedDeviceId = localStorage.getItem('selected_camera_id');
-        
-        // Determine which camera to use
-        let cameraId;
-        if (savedDeviceId && qrCameraState.currentDeviceId === null) {
-            cameraId = savedDeviceId;
-        } else if (qrCameraState.currentDeviceId) {
-            cameraId = qrCameraState.currentDeviceId;
-        } else {
-            // Get list of cameras and choose based on facing mode
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-                // Try to find camera matching facing mode
-                const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-                const frontCamera = devices.find(d => d.label.toLowerCase().includes('front'));
-                
-                if (qrCameraState.currentFacingMode === 'environment' && backCamera) {
-                    cameraId = backCamera.id;
-                } else if (qrCameraState.currentFacingMode === 'user' && frontCamera) {
-                    cameraId = frontCamera.id;
-                } else if (devices.length > 0) {
-                    // Safe fallback to first camera
-                    cameraId = devices[0].id;
-                }
-                if (cameraId) {
-                    qrCameraState.currentDeviceId = cameraId;
-                }
-            }
-        }
-
-        // Configuration for QR scanning
-        const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 16/9
-        };
-
-        // Set isScanning flag BEFORE starting to prevent race conditions
-        qrCameraState.isScanning = true;
-
-        // Start scanning
-        await qrCameraState.html5QrCode.start(
-            cameraId || { facingMode: qrCameraState.currentFacingMode },
-            config,
-            (decodedText, decodedResult) => {
-                // QR Code detected! Stop scanning and go to payment
-                console.log('QR код розпізнано:', decodedText);
-                onQRCodeDetected(decodedText);
-            },
-            (errorMessage) => {
-                // Scanning errors - ignore them (no QR code in view)
-            }
-        );
-
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: qrCameraState.currentFacingMode }
+        });
+        videoElement.srcObject = stream;
         fallbackElement.classList.remove('active');
+        
+        // Почати сканування після завантаження відео
+        videoElement.onloadedmetadata = () => {
+            videoElement.play();
+            qrCameraState.scanningActive = true;
+            scanQRCode();
+        };
     } catch (error) {
-        console.error("Помилка запуску QR сканера:", error);
-        qrCameraState.isScanning = false; // Reset flag on error
+        console.error("Помилка камери:", error);
         showQRCameraFallback();
     }
 }
 
 /**
- * Handle QR code detection
+ * Scan QR code from video stream using jsQR
  */
-function onQRCodeDetected(qrCodeData) {
+function scanQRCode() {
+    if (!qrCameraState.scanningActive) return;
     
-    // Stop scanning
-    if (qrCameraState.html5QrCode && qrCameraState.isScanning) {
-        qrCameraState.html5QrCode.stop().then(() => {
-            qrCameraState.isScanning = false;
-            goToPaymentFromQR();
-        }).catch((err) => {
-            console.error("Помилка зупинки сканера:", err);
-            qrCameraState.isScanning = false;
-            goToPaymentFromQR();
-        });
-    } else {
-        goToPaymentFromQR();
+    const videoElement = document.getElementById('camera-stream');
+    if (!videoElement || videoElement.readyState !== videoElement.HAVE_ENOUGH_DATA) {
+        requestAnimationFrame(scanQRCode);
+        return;
     }
+    
+    // Створити canvas для аналізу
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    context.drawImage(videoElement, 0, 0);
+    
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Сканування через jsQR
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert"
+    });
+    
+    if (code) {
+        // QR-код знайдено!
+        console.log("QR-код розпізнано:", code.data);
+        qrCameraState.scanningActive = false;
+        stopQRCamera();
+        
+        sessionStorage.setItem('qr_scanned', 'true');
+        window.location.href = 'payment.html';
+        return;
+    }
+    
+    // Продовжити сканування
+    requestAnimationFrame(scanQRCode);
 }
 
 /**
@@ -574,16 +526,9 @@ function showQRCameraFallback() {
  * Stop the camera
  */
 function stopQRCamera() {
-    if (qrCameraState.html5QrCode && qrCameraState.isScanning) {
-        qrCameraState.html5QrCode.stop().then(() => {
-            qrCameraState.isScanning = false;
-        }).catch((err) => {
-            console.error("Помилка зупинки камери:", err);
-            qrCameraState.isScanning = false;
-        });
-    }
+    qrCameraState.scanningActive = false;
     
-    // Also stop video element if present
+    // Stop video element if present
     const videoElement = document.getElementById('camera-stream');
     if (videoElement && videoElement.srcObject) {
         videoElement.srcObject.getTracks().forEach(track => track.stop());
@@ -596,21 +541,10 @@ function stopQRCamera() {
  */
 function switchQRCamera() {
     qrCameraState.currentFacingMode = (qrCameraState.currentFacingMode === 'environment') ? 'user' : 'environment';
-    qrCameraState.currentDeviceId = null; // Скидаємо deviceId при перемиканні
     
     // Stop current scanner and restart with new camera
-    if (qrCameraState.html5QrCode && qrCameraState.isScanning) {
-        qrCameraState.html5QrCode.stop().then(() => {
-            qrCameraState.isScanning = false;
-            startQRCamera();
-        }).catch((err) => {
-            console.error("Помилка перемикання камери:", err);
-            qrCameraState.isScanning = false;
-            startQRCamera();
-        });
-    } else {
-        startQRCamera();
-    }
+    stopQRCamera();
+    startQRCamera();
 }
 
 /**
