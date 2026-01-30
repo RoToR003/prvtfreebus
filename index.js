@@ -11,7 +11,8 @@ const CONFIG = {
     STATISTICS_KEY: 'transport_statistics',
     CACHE_KEY: 'transport_cache',
     CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 години в мілісекундах
-    FULLSCREEN_KEY: 'fullscreen_enabled'
+    FULLSCREEN_KEY: 'fullscreen_enabled',
+    QR_SCAN_SCALE: 0.5 // 50% від оригінального розміру для швидшого сканування
 };
 
 // ============================================
@@ -453,14 +454,14 @@ async function startQRCamera() {
     try {
         const savedDeviceId = localStorage.getItem('selected_camera_id');
         
-        // Налаштування для максимальної якості
+        // Оптимізовані налаштування для швидкого сканування
         const constraints = {
             video: {
                 facingMode: qrCameraState.currentFacingMode,
-                width: { ideal: 4096 },
-                height: { ideal: 2160 },
+                width: { ideal: 1920 },      // Зменшено з 4096
+                height: { ideal: 1080 },     // Зменшено з 2160
                 aspectRatio: { ideal: 16/9 },
-                frameRate: { ideal: 60, min: 30 }
+                frameRate: { ideal: 30 }     // Стабільний framerate для сканування
             }
         };
         
@@ -532,11 +533,13 @@ function scanQRCode() {
         return;
     }
     
-    // Сканування ВСЬОГО екрану (не тільки рамки)
+    // Використовуємо меншу роздільність для швидшого сканування
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
+    const scale = CONFIG.QR_SCAN_SCALE;
+    canvas.width = videoElement.videoWidth * scale;
+    canvas.height = videoElement.videoHeight * scale;
+    
     context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
     
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -552,7 +555,7 @@ function scanQRCode() {
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
-            goToPage('payment');
+            window.location.href = 'payment.html';
             return;
         }
     } else {
@@ -621,6 +624,17 @@ function goToPayment() {
 function initQRPage() {
     // Start camera
     startQRCamera();
+    
+    // Setup close button (хрестик) - повернення на архів
+    const closeBtn = document.querySelector('.top-bar .icon-btn');
+    if (closeBtn) {
+        closeBtn.onclick = null;
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            stopQRCamera();
+            window.location.href = 'index.html'; // Архів
+        });
+    }
     
     // Setup switch camera button
     const switchBtn = document.querySelector('.circle-btn[onclick*="switchCamera"]');
@@ -1297,6 +1311,83 @@ function updateCacheSizeDisplay() {
     }
 }
 
+// ============================================
+// СТОРІНКА ТРАНСПОРТ (transport.html)
+// ============================================
+
+/**
+ * Перехід до додатку Privat24
+ */
+function goToPrivat24() {
+    // Deep link до додатку Privat24
+    const iosLink = 'privat24://';
+    const androidLink = 'intent://privat24#Intent;scheme=privat24;package=ua.privatbank.ap24;end';
+    const webLink = 'https://next.privat24.ua/';
+    
+    // Визначити платформу
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
+    let attemptedDeepLink = false;
+    let fallbackTimer;
+    
+    // Функція для скасування fallback якщо додаток відкрився
+    const cancelFallback = () => {
+        if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+    
+    // Обробник зміни видимості сторінки
+    const handleVisibilityChange = () => {
+        if (document.hidden) {
+            // Сторінка стала невидимою - ймовірно додаток відкрився
+            cancelFallback();
+        }
+    };
+    
+    // Спробувати відкрити додаток залежно від платформи
+    if (isIOS) {
+        window.location.href = iosLink;
+        attemptedDeepLink = true;
+    } else if (isAndroid) {
+        window.location.href = androidLink;
+        attemptedDeepLink = true;
+    }
+    
+    if (attemptedDeepLink) {
+        // Відстежувати зміну видимості сторінки
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Fallback після затримки якщо додаток не відкрився
+        fallbackTimer = setTimeout(() => {
+            cancelFallback();
+            window.location.href = webLink;
+        }, 1500);
+    } else {
+        // Невідома платформа - відкрити веб версію
+        window.location.href = webLink;
+    }
+}
+
+/**
+ * Ініціалізація transport сторінки
+ */
+function initTransportPage() {
+    const backBtn = document.querySelector('.top-bar .back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            goToPrivat24();
+        });
+    }
+}
+
+// ============================================
+// СТОРІНКА НАЛАШТУВАНЬ (settings.html)
+// ============================================
+
 /**
  * Ініціалізація сторінки налаштувань
  */
@@ -1469,20 +1560,20 @@ const SPA = {
     
     initPageFunctions(page) {
         switch(page) {
+            case 'transport': 
+                initTransportPage();
+                break;
             case 'index': 
                 initIndexPage(); 
-                break;
-            case 'payment': 
-                initPaymentPage(); 
                 break;
             case 'qr': 
                 initQRPage(); 
                 break;
+            case 'payment': 
+                initPaymentPage(); 
+                break;
             case 'settings': 
                 initSettingsPage(); 
-                break;
-            case 'transport': 
-                // Transport page has no special init
                 break;
         }
     },
@@ -1543,6 +1634,8 @@ document.addEventListener('DOMContentLoaded', function() {
             initQRPage();
         } else if (currentPage === 'settings.html') {
             initSettingsPage();
+        } else if (currentPage === 'transport.html') {
+            initTransportPage();
         }
     }
 
