@@ -1422,3 +1422,34 @@ body.transport-page {
     width: 100%;
     min-height: 100vh;
 }
+
+/* Page-specific styles for SPA */
+#app-container.qr-page {
+    background-color: #000;
+    color: #fff;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-bottom: 0;
+}
+
+#app-container.payment-page {
+    padding-bottom: 350px; 
+    overflow-y: auto;
+}
+
+#app-container.settings-page {
+    padding: 16px;
+    padding-bottom: 40px;
+}
+
+#app-container.transport-page {
+    padding: 16px;
+}
+
+#app-container.index-page {
+    /* Default styles from body apply */
+}

@@ -1368,6 +1368,13 @@ const SPA = {
                 this.pageCache[page] = content;
             }
             
+            // Remove all page-specific classes from container
+            const pageClasses = ['index-page', 'payment-page', 'qr-page', 'settings-page', 'transport-page'];
+            pageClasses.forEach(cls => this.container.classList.remove(cls));
+            
+            // Add page-specific class to container
+            this.container.classList.add(`${page}-page`);
+            
             this.container.innerHTML = content;
             
             if (pushState) {
