@@ -434,20 +434,146 @@ function displayTicketsOnIndexPage() {
 // QR СТОРІНКА (qr.html)
 // ============================================
 
+// QR Camera state
+let qrCameraState = {
+    currentFacingMode: 'environment',
+    currentDeviceId: null
+};
+
+/**
+ * Start the camera for QR scanning
+ */
+async function startQRCamera() {
+    const videoElement = document.getElementById('camera-stream');
+    const fallbackElement = document.getElementById('camera-fallback');
+    
+    if (!videoElement || !fallbackElement) return;
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+            // Отримуємо налаштування камери з localStorage
+            const savedDeviceId = localStorage.getItem('selected_camera_id');
+            
+            // Налаштування для максимальної якості
+            const constraints = {
+                video: {
+                    facingMode: qrCameraState.currentFacingMode,
+                    width: { ideal: 4096 },
+                    height: { ideal: 2160 },
+                    aspectRatio: { ideal: 16/9 },
+                    frameRate: { ideal: 60, min: 30 }
+                }
+            };
+            
+            // Якщо є збережений deviceId, використовуємо його
+            if (savedDeviceId && qrCameraState.currentDeviceId === null) {
+                constraints.video.deviceId = { exact: savedDeviceId };
+                delete constraints.video.facingMode;
+            } else if (qrCameraState.currentDeviceId) {
+                constraints.video.deviceId = { exact: qrCameraState.currentDeviceId };
+                delete constraints.video.facingMode;
+            }
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = stream;
+            fallbackElement.classList.remove('active');
+            
+            // Зберігаємо поточний deviceId
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack) {
+                qrCameraState.currentDeviceId = videoTrack.getSettings().deviceId;
+            }
+        } catch (error) {
+            console.error("Помилка:", error);
+            // Якщо не вдалося з високою якістю, пробуємо базові налаштування
+            try {
+                const basicConstraints = {
+                    video: { facingMode: qrCameraState.currentFacingMode }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+                videoElement.srcObject = stream;
+                fallbackElement.classList.remove('active');
+            } catch (fallbackError) {
+                console.error("Базова помилка:", fallbackError);
+                showQRCameraFallback();
+            }
+        }
+    } else {
+        showQRCameraFallback();
+    }
+}
+
+/**
+ * Show camera fallback
+ */
+function showQRCameraFallback() {
+    const videoElement = document.getElementById('camera-stream');
+    const fallbackElement = document.getElementById('camera-fallback');
+    if (videoElement && fallbackElement) {
+        videoElement.style.display = 'none';
+        fallbackElement.classList.add('active');
+    }
+}
+
+/**
+ * Stop the camera
+ */
+function stopQRCamera() {
+    const videoElement = document.getElementById('camera-stream');
+    if (videoElement && videoElement.srcObject) {
+        videoElement.srcObject.getTracks().forEach(track => track.stop());
+        videoElement.srcObject = null;
+    }
+}
+
+/**
+ * Switch camera (front/back)
+ */
+function switchQRCamera() {
+    qrCameraState.currentFacingMode = (qrCameraState.currentFacingMode === 'environment') ? 'user' : 'environment';
+    qrCameraState.currentDeviceId = null; // Скидаємо deviceId при перемиканні
+    stopQRCamera();
+    startQRCamera();
+}
+
+/**
+ * Go to payment from QR page
+ */
+function goToPaymentFromQR() {
+    // Зберегти мітку про сканування
+    sessionStorage.setItem('qr_scanned', 'true');
+    // Перейти на сторінку оплати
+    goToPage('payment');
+}
+
 /**
  * Ініціалізація QR сторінки
  */
 function initQRPage() {
+    // Start camera
+    startQRCamera();
+    
+    // Setup switch camera button
+    const switchBtn = document.querySelector('.circle-btn[onclick*="switchCamera"]');
+    if (switchBtn) {
+        switchBtn.removeAttribute('onclick');
+        switchBtn.addEventListener('click', switchQRCamera);
+    }
+    
+    // Setup payment button
+    const paymentBtn = document.querySelector('.circle-btn[onclick*="goToPayment"]');
+    if (paymentBtn) {
+        paymentBtn.removeAttribute('onclick');
+        paymentBtn.addEventListener('click', goToPaymentFromQR);
+    }
+    
     // При кліку на будь-яку область екрану переходимо на оплату
     const overlay = document.querySelector('.overlay');
     if (overlay) {
         overlay.addEventListener('click', function(e) {
-            // Якщо клік не на кнопку закриття
-            if (!e.target.closest('.icon-btn')) {
-                // Зберегти мітку про сканування
-                sessionStorage.setItem('qr_scanned', 'true');
-                // Перейти на сторінку оплати
-                window.location.href = 'payment.html';
+            // Якщо клік не на кнопку закриття або інші кнопки
+            if (!e.target.closest('.icon-btn') && !e.target.closest('.circle-btn')) {
+                goToPaymentFromQR();
             }
         });
     }
@@ -465,11 +591,39 @@ function initPaymentPage() {
         const buyBtn = document.querySelector('.buy-btn');
         const transportInput = document.querySelector('.transport-input');
         const qtyInput = document.getElementById('qty-input');
+        const minusBtn = document.getElementById('btn-minus');
+        const plusBtn = document.getElementById('btn-plus');
+        const totalPriceEl = document.getElementById('total-price');
+        const pricePerTicket = 12.00;
         
         if (!buyBtn || !transportInput || !qtyInput) return;
         
         // Генерація рандомних даних картки
         generateRandomCardData();
+        
+        // Логіка лічильника пасажирів
+        if (plusBtn && minusBtn && totalPriceEl) {
+            const updateTotal = (qty) => {
+                const total = (qty * pricePerTicket).toFixed(2);
+                totalPriceEl.textContent = `${total} UAH`;
+            };
+            
+            plusBtn.addEventListener('click', () => {
+                let val = parseInt(qtyInput.value);
+                val++;
+                qtyInput.value = val;
+                updateTotal(val);
+            });
+
+            minusBtn.addEventListener('click', () => {
+                let val = parseInt(qtyInput.value);
+                if (val > 1) {
+                    val--;
+                    qtyInput.value = val;
+                    updateTotal(val);
+                }
+            });
+        }
         
         // Обробник кнопки "Купити"
         buyBtn.addEventListener('click', function() {
@@ -501,7 +655,7 @@ function initPaymentPage() {
             sessionStorage.removeItem('qr_scanned');
             
             // Перейти на головну сторінку
-            window.location.href = 'index.html';
+            goToPage('index');
         });
         
         // Валідація вводу - тільки цифри
@@ -1150,6 +1304,138 @@ function initDoubleClickFullscreen() {
 }
 
 // ============================================
+// SPA ROUTER
+// ============================================
+
+const SPA = {
+    container: null,
+    pageCache: {},
+    currentPage: null,
+    
+    init() {
+        this.container = document.getElementById('app-container');
+        
+        if (!this.container) {
+            // Not in SPA mode, exit
+            return false;
+        }
+        
+        // Перехоплювати кліки по посиланнях
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('[data-page]');
+            if (link) {
+                e.preventDefault();
+                this.navigate(link.dataset.page);
+            }
+        });
+        
+        // Обробка кнопки "Назад"
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.page) {
+                this.loadPage(e.state.page, false);
+            }
+        });
+        
+        // Завантажити початкову сторінку
+        const hash = window.location.hash.slice(1); // Remove #
+        const initialPage = hash || 'transport';
+        this.loadPage(initialPage, false);
+        
+        return true;
+    },
+    
+    navigate(page) {
+        this.loadPage(page, true);
+    },
+    
+    async loadPage(page, pushState = true) {
+        // Cleanup previous page
+        this.cleanupCurrentPage();
+        
+        this.showTransition();
+        
+        try {
+            let content;
+            
+            if (this.pageCache[page]) {
+                content = this.pageCache[page];
+            } else {
+                const response = await fetch(`templates/${page}-content.html`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${page}`);
+                }
+                content = await response.text();
+                this.pageCache[page] = content;
+            }
+            
+            this.container.innerHTML = content;
+            
+            if (pushState) {
+                history.pushState({ page }, '', `#${page}`);
+            }
+            
+            this.initPageFunctions(page);
+            this.hideTransition();
+            this.currentPage = page;
+            
+        } catch (error) {
+            console.error('Помилка завантаження сторінки:', error);
+            this.hideTransition();
+        }
+    },
+    
+    cleanupCurrentPage() {
+        // Cleanup based on current page
+        if (this.currentPage === 'qr') {
+            // Stop camera when leaving QR page
+            stopQRCamera();
+        }
+    },
+    
+    initPageFunctions(page) {
+        switch(page) {
+            case 'index': 
+                initIndexPage(); 
+                break;
+            case 'payment': 
+                initPaymentPage(); 
+                break;
+            case 'qr': 
+                initQRPage(); 
+                break;
+            case 'settings': 
+                initSettingsPage(); 
+                break;
+            case 'transport': 
+                // Transport page has no special init
+                break;
+        }
+    },
+    
+    showTransition() {
+        const overlay = document.getElementById('page-transition');
+        if (overlay) overlay.classList.add('active');
+    },
+    
+    hideTransition() {
+        const overlay = document.getElementById('page-transition');
+        if (overlay) {
+            setTimeout(() => overlay.classList.remove('active'), 50);
+        }
+    }
+};
+
+// Глобальна функція для навігації
+function goToPage(page) {
+    if (SPA.container) {
+        SPA.navigate(page);
+    } else {
+        // Fallback for non-SPA mode
+        window.location.href = `${page}.html`;
+    }
+}
+
+// ============================================
 // АВТОМАТИЧНА ІНІЦІАЛІЗАЦІЯ
 // ============================================
 
@@ -1166,18 +1452,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Відстежувати зміни fullscreen
     monitorFullscreenChanges();
     
-    const currentPage = window.location.pathname.split('/').pop();
+    // Спробувати ініціалізувати SPA
+    const isSPA = SPA.init();
     
-    // Визначити поточну сторінку та ініціалізувати відповідний функціонал
-    if (currentPage === 'index.html' || currentPage === '') {
-        initIndexPage();
-    } else if (currentPage === 'payment.html') {
-        initPaymentPage();
-    } else if (currentPage === 'qr.html') {
-        initQRPage();
-    } else if (currentPage === 'settings.html') {
-        initSettingsPage();
+    if (!isSPA) {
+        // Стара логіка для окремих HTML файлів (зворотна сумісність)
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        // Визначити поточну сторінку та ініціалізувати відповідний функціонал
+        if (currentPage === 'index.html' || currentPage === '') {
+            initIndexPage();
+        } else if (currentPage === 'payment.html') {
+            initPaymentPage();
+        } else if (currentPage === 'qr.html') {
+            initQRPage();
+        } else if (currentPage === 'settings.html') {
+            initSettingsPage();
+        }
     }
+
     
     // Ініціалізувати подвійний клік для fullscreen на всіх сторінках
     initDoubleClickFullscreen();
