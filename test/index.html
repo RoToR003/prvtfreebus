@@ -21,6 +21,7 @@
             width: 100%;
             height: 100%;
             border: none;
+            display: block;
         }
         
         .loading {
@@ -37,12 +38,15 @@
             font-family: 'Roboto', sans-serif;
             z-index: 9999;
             opacity: 1;
-            transition: opacity 0.2s;
+            visibility: visible;
+            transition: opacity 0.2s, visibility 0s;
         }
         
         .loading.hidden {
             opacity: 0;
+            visibility: hidden;
             pointer-events: none;
+            transition: opacity 0.2s, visibility 0s 0.2s;
         }
     </style>
 </head>
