@@ -1369,7 +1369,8 @@ const SPA = {
             }
             
             // Remove all page-specific classes from container
-            this.container.className = '';
+            const pageClasses = ['index-page', 'payment-page', 'qr-page', 'settings-page', 'transport-page'];
+            pageClasses.forEach(cls => this.container.classList.remove(cls));
             
             // Add page-specific class to container
             this.container.classList.add(`${page}-page`);
