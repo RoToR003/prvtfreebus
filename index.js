@@ -453,11 +453,14 @@ async function startQRCamera() {
     try {
         const savedDeviceId = localStorage.getItem('selected_camera_id');
         
+        // Налаштування для максимальної якості
         const constraints = {
             video: {
                 facingMode: qrCameraState.currentFacingMode,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 4096 },
+                height: { ideal: 2160 },
+                aspectRatio: { ideal: 16/9 },
+                frameRate: { ideal: 60, min: 30 }
             }
         };
         
@@ -469,7 +472,25 @@ async function startQRCamera() {
             delete constraints.video.facingMode;
         }
         
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+            console.log("Висока якість не підтримується, пробуємо базові налаштування", error.name);
+            // Fallback на базові налаштування
+            const basicConstraints = {
+                video: { facingMode: qrCameraState.currentFacingMode }
+            };
+            if (savedDeviceId && !qrCameraState.currentDeviceId) {
+                basicConstraints.video.deviceId = { exact: savedDeviceId };
+                delete basicConstraints.video.facingMode;
+            } else if (qrCameraState.currentDeviceId) {
+                basicConstraints.video.deviceId = { exact: qrCameraState.currentDeviceId };
+                delete basicConstraints.video.facingMode;
+            }
+            stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+        }
+        
         videoElement.srcObject = stream;
         fallbackElement.classList.remove('active');
         
