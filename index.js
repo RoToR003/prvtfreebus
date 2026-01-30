@@ -453,14 +453,14 @@ async function startQRCamera() {
     try {
         const savedDeviceId = localStorage.getItem('selected_camera_id');
         
-        // Налаштування для максимальної якості
+        // Оптимізовані налаштування для швидкого сканування
         const constraints = {
             video: {
                 facingMode: qrCameraState.currentFacingMode,
-                width: { ideal: 4096 },
-                height: { ideal: 2160 },
+                width: { ideal: 1920 },      // Зменшено з 4096
+                height: { ideal: 1080 },     // Зменшено з 2160
                 aspectRatio: { ideal: 16/9 },
-                frameRate: { ideal: 60, min: 30 }
+                frameRate: { ideal: 30 }     // Стабільний framerate для сканування
             }
         };
         
@@ -532,11 +532,15 @@ function scanQRCode() {
         return;
     }
     
-    // Сканування ВСЬОГО екрану (не тільки рамки)
+    // Використовуємо меншу роздільність для швидшого сканування
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
+    
+    // Використовуємо меншу роздільність для швидшого сканування
+    const scale = 0.5; // 50% від оригінального розміру
+    canvas.width = videoElement.videoWidth * scale;
+    canvas.height = videoElement.videoHeight * scale;
+    
     context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
     
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
@@ -552,7 +556,7 @@ function scanQRCode() {
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
-            goToPage('payment');
+            window.location.href = 'payment.html';
             return;
         }
     } else {
@@ -621,6 +625,17 @@ function goToPayment() {
 function initQRPage() {
     // Start camera
     startQRCamera();
+    
+    // Setup close button (хрестик) - повернення на архів
+    const closeBtn = document.querySelector('.top-bar .icon-btn');
+    if (closeBtn) {
+        closeBtn.onclick = null;
+        closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            stopQRCamera();
+            window.location.href = 'index.html'; // Архів
+        });
+    }
     
     // Setup switch camera button
     const switchBtn = document.querySelector('.circle-btn[onclick*="switchCamera"]');
@@ -1297,6 +1312,48 @@ function updateCacheSizeDisplay() {
     }
 }
 
+// ============================================
+// СТОРІНКА ТРАНСПОРТ (transport.html)
+// ============================================
+
+/**
+ * Перехід до додатку Privat24
+ */
+function goToPrivat24() {
+    // Deep link до додатку Privat24
+    // Для Android
+    const androidLink = 'intent://privat24#Intent;scheme=privat24;package=ua.privatbank.ap24;end';
+    // Для iOS
+    const iosLink = 'privat24://';
+    // Fallback - веб версія
+    const webLink = 'https://next.privat24.ua/';
+    
+    // Спробувати відкрити додаток
+    window.location.href = iosLink;
+    
+    // Fallback після затримки якщо додаток не відкрився
+    setTimeout(() => {
+        window.location.href = webLink;
+    }, 1500);
+}
+
+/**
+ * Ініціалізація transport сторінки
+ */
+function initTransportPage() {
+    const backBtn = document.querySelector('.back-btn, .icon-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            goToPrivat24();
+        });
+    }
+}
+
+// ============================================
+// СТОРІНКА НАЛАШТУВАНЬ (settings.html)
+// ============================================
+
 /**
  * Ініціалізація сторінки налаштувань
  */
@@ -1469,20 +1526,20 @@ const SPA = {
     
     initPageFunctions(page) {
         switch(page) {
+            case 'transport': 
+                initTransportPage();
+                break;
             case 'index': 
                 initIndexPage(); 
-                break;
-            case 'payment': 
-                initPaymentPage(); 
                 break;
             case 'qr': 
                 initQRPage(); 
                 break;
+            case 'payment': 
+                initPaymentPage(); 
+                break;
             case 'settings': 
                 initSettingsPage(); 
-                break;
-            case 'transport': 
-                // Transport page has no special init
                 break;
         }
     },
@@ -1543,6 +1600,8 @@ document.addEventListener('DOMContentLoaded', function() {
             initQRPage();
         } else if (currentPage === 'settings.html') {
             initSettingsPage();
+        } else if (currentPage === 'transport.html') {
+            initTransportPage();
         }
     }
 
