@@ -1,74 +1,86 @@
-# SPA Version of Transport App
+# Simple SPA Wrapper for Transport App
 
-This directory contains a Single Page Application (SPA) version of the transport ticket system.
+This directory contains a lightweight iframe-based SPA wrapper that loads the original HTML files without any modifications.
 
-## Files Created
+## Structure
 
-### 1. **styles.css** (26 KB, 1414 lines)
-- Combined ALL CSS from all 5 HTML files
-- Organized by page with page-specific class selectors
-- Includes all :root CSS variables
-- All styles from: index.html, transport.html, qr.html, payment.html, settings.html
+```
+test/
+└── index.html    # Single file - iframe-based SPA wrapper
+```
 
-### 2. **index.html** (23 KB, 466 lines)
-- Single HTML file with HTML5 doctype
-- Includes Google Fonts (Roboto: 400, 500, 700, 900)
-- Links to styles.css and jsQR library
-- Contains 5 `<template>` elements:
-  - `page-transport`: Main menu page
-  - `page-index`: Archive page with tickets
-  - `page-qr`: QR scanner page
-  - `page-payment`: Payment page
-  - `page-settings`: Settings page
-- All navigation converted from `onclick="window.location.href='xxx.html'"` to `data-page="xxx"`
-- All back buttons converted from `onclick="window.history.back()"` to `data-page="transport"`
+## File Description
 
-### 3. **app.js** (56 KB, 1694 lines)
-- **Router code** (105 lines):
-  - SPA navigation system
-  - Hash-based routing (#transport, #index, #qr, #payment, #settings)
-  - History management (back/forward button support)
-  - Page initialization hooks
-  - Cleanup on page change (stops camera, timers)
-- **All logic from index.js** (1589 lines):
-  - Complete original functionality preserved
-  - All functions work with the router
+### **index.html** (8.2 KB, 207 lines)
+- Simple iframe-based SPA wrapper
+- Loads original HTML files from parent directory via iframe
+- Implements hash-based routing (#transport, #index, #qr, #payment, #settings)
+- Intercepts navigation within iframe to use SPA router
+- Shows loading indicator during page transitions
+- Preserves fullscreen mode during navigation
 
 ## How It Works
 
-1. **Router System**: 
-   - Uses hash-based routing for page navigation
-   - Listens for clicks on elements with `data-page` attribute
-   - Loads templates dynamically into `#app` container
-   - Updates browser history
+1. **Iframe Loading**: 
+   - Loads original HTML files (../transport.html, ../index.html, etc.) into an iframe
+   - No modifications to original files needed
+   - Each page maintains its own styling and functionality
 
-2. **Page Initialization**:
-   - Each page has an init function called after template loads
-   - `initTransportPage()`, `displayTicketsOnIndexPage()`, `startQRCamera()`, etc.
+2. **Navigation Interception**:
+   - Listens for clicks on links and buttons in the iframe
+   - Detects navigation to pages like `transport.html`, `index.html`, etc.
+   - Intercepts the navigation and uses SPA router instead
+   - Sends postMessage from iframe to parent for navigation
 
-3. **Navigation**:
-   - Click any element with `data-page="pagename"` to navigate
-   - Browser back/forward buttons work
-   - URL hash updates: `#transport`, `#index`, etc.
+3. **Hash-based Routing**:
+   - URL updates with hash: `test/index.html#transport`, `test/index.html#qr`, etc.
+   - Browser back/forward buttons work correctly
+   - Direct navigation via URL hash supported
+
+4. **Fullscreen Preservation**:
+   - Fullscreen state is preserved during page transitions
+   - No page reloads mean fullscreen is never lost
 
 ## Usage
 
-Simply open `index.html` in a web browser. The app will:
+Simply open `test/index.html` in a web browser:
+```
+file:///path/to/prvtfreebus/test/index.html
+```
+
+Or via HTTP server:
+```bash
+cd /path/to/prvtfreebus
+python3 -m http.server 8000
+# Then open: http://localhost:8000/test/index.html
+```
+
+The app will:
 1. Start on the transport page (`#transport`)
-2. Navigate between pages by clicking menu items
-3. Preserve all original functionality (QR scanning, ticket management, etc.)
+2. Load the original transport.html file in iframe
+3. Intercept navigation clicks and route through SPA
+4. Preserve fullscreen mode during all transitions
 
-## Key Conversions Made
+## Key Features
 
-- ✅ `onclick="window.location.href='page.html'"` → `data-page="page"`
-- ✅ `onclick="window.history.back()"` → `data-page="transport"`
-- ✅ All inline onclick handlers for functionality preserved
-- ✅ CSS scoped by page class (`.index-page`, `.transport-page`, etc.)
-- ✅ Original JavaScript logic fully integrated
+- ✅ **No modification** of original HTML files
+- ✅ **Single file** SPA implementation
+- ✅ **Hash routing** with browser history support
+- ✅ **Fullscreen preserved** during navigation
+- ✅ **Loading indicator** for smooth transitions
+- ✅ **Navigation interception** via event listeners and postMessage
+
+## Advantages Over Template-based SPA
+
+1. **Simplicity**: Only one file (index.html) instead of separate HTML, CSS, and JS files
+2. **No modifications**: Original files remain completely untouched
+3. **Maintainability**: Changes to original files automatically reflected in SPA
+4. **Smaller footprint**: ~8 KB instead of ~80 KB for template-based approach
+5. **Easier updates**: No need to sync changes between original and SPA versions
 
 ## Notes
 
 - Original files in parent directory remain unchanged
-- All features work identically to multi-page version
-- QR camera properly stops when leaving QR page
-- Timers properly cleaned up on page changes
+- All features work identically to standalone page version
+- Navigation is seamless with no page reloads
+- Compatible with all modern browsers supporting iframes and postMessage
