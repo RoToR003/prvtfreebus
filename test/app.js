@@ -655,7 +655,7 @@ function scanQRCode() {
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
-            window.location.href = 'payment.html';
+            goToPage('payment');
             return;
         }
     } else {
@@ -1479,134 +1479,6 @@ function initDoubleClickFullscreen() {
     });
 }
 
-// ============================================
-// SPA ROUTER
-// ============================================
-
-const SPA = {
-    container: null,
-    pageCache: {},
-    currentPage: null,
-    
-    init() {
-        this.container = document.getElementById('app-container');
-        
-        if (!this.container) {
-            // Not in SPA mode, exit
-            return false;
-        }
-        
-        // Перехоплювати кліки по посиланнях
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('[data-page]');
-            if (link) {
-                e.preventDefault();
-                this.navigate(link.dataset.page);
-            }
-        });
-        
-        // Обробка кнопки "Назад"
-        window.addEventListener('popstate', (e) => {
-            if (e.state && e.state.page) {
-                this.loadPage(e.state.page, false);
-            }
-        });
-        
-        // Завантажити початкову сторінку
-        const hash = window.location.hash.slice(1); // Remove #
-        const initialPage = hash || 'transport';
-        this.loadPage(initialPage, false);
-        
-        return true;
-    },
-    
-    navigate(page) {
-        this.loadPage(page, true);
-    },
-    
-    async loadPage(page, pushState = true) {
-        // Cleanup previous page
-        this.cleanupCurrentPage();
-        
-        this.showTransition();
-        
-        try {
-            let content;
-            
-            if (this.pageCache[page]) {
-                content = this.pageCache[page];
-            } else {
-                const response = await fetch(`templates/${page}-content.html`);
-                if (!response.ok) {
-                    throw new Error(`Failed to load ${page}`);
-                }
-                content = await response.text();
-                this.pageCache[page] = content;
-            }
-            
-            // Remove all page-specific classes from container
-            const pageClasses = ['index-page', 'payment-page', 'qr-page', 'settings-page', 'transport-page'];
-            pageClasses.forEach(cls => this.container.classList.remove(cls));
-            
-            // Add page-specific class to container
-            this.container.classList.add(`${page}-page`);
-            
-            this.container.innerHTML = content;
-            
-            if (pushState) {
-                history.pushState({ page }, '', `#${page}`);
-            }
-            
-            this.initPageFunctions(page);
-            this.hideTransition();
-            this.currentPage = page;
-            
-        } catch (error) {
-            console.error('Помилка завантаження сторінки:', error);
-            this.hideTransition();
-        }
-    },
-    
-    cleanupCurrentPage() {
-        // Cleanup based on current page
-        if (this.currentPage === 'qr') {
-            // Stop camera when leaving QR page
-            stopQRCamera();
-        }
-    },
-    
-    initPageFunctions(page) {
-        switch(page) {
-            case 'index': 
-                initIndexPage(); 
-                break;
-            case 'payment': 
-                initPaymentPage(); 
-                break;
-            case 'qr': 
-                initQRPage(); 
-                break;
-            case 'settings': 
-                initSettingsPage(); 
-                break;
-            case 'transport': 
-                // Transport page has no special init
-                break;
-        }
-    },
-    
-    showTransition() {
-        const overlay = document.getElementById('page-transition');
-        if (overlay) overlay.classList.add('active');
-    },
-    
-    hideTransition() {
-        const overlay = document.getElementById('page-transition');
-        if (overlay) {
-            setTimeout(() => overlay.classList.remove('active'), 50);
-        }
-    }
-};
 
 // Глобальна функція для навігації (визначена у роутері вище)
 
