@@ -451,13 +451,33 @@ async function startQRCamera() {
     if (!videoElement || !fallbackElement) return;
     
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: qrCameraState.currentFacingMode }
-        });
+        const savedDeviceId = localStorage.getItem('selected_camera_id');
+        
+        const constraints = {
+            video: {
+                facingMode: qrCameraState.currentFacingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+        
+        if (savedDeviceId && !qrCameraState.currentDeviceId) {
+            constraints.video.deviceId = { exact: savedDeviceId };
+            delete constraints.video.facingMode;
+        } else if (qrCameraState.currentDeviceId) {
+            constraints.video.deviceId = { exact: qrCameraState.currentDeviceId };
+            delete constraints.video.facingMode;
+        }
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = stream;
         fallbackElement.classList.remove('active');
         
-        // Почати сканування після завантаження відео
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+            qrCameraState.currentDeviceId = videoTrack.getSettings().deviceId;
+        }
+        
         videoElement.onloadedmetadata = () => {
             videoElement.play();
             qrCameraState.scanningActive = true;
@@ -465,6 +485,16 @@ async function startQRCamera() {
         };
     } catch (error) {
         console.error("Помилка камери:", error);
+        
+        // If the saved device ID is invalid, clear it and retry with facingMode
+        if ((error.name === 'OverconstrainedError' || error.name === 'NotFoundError') && localStorage.getItem('selected_camera_id')) {
+            console.log("Збережений deviceId недійсний, повторна спроба з facingMode");
+            localStorage.removeItem('selected_camera_id');
+            qrCameraState.currentDeviceId = null;
+            startQRCamera();
+            return;
+        }
+        
         showQRCameraFallback();
     }
 }
@@ -481,7 +511,6 @@ function scanQRCode() {
         return;
     }
     
-    // Створити canvas для аналізу
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = videoElement.videoWidth;
@@ -490,23 +519,25 @@ function scanQRCode() {
     
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     
-    // Сканування через jsQR
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert"
-    });
-    
-    if (code) {
-        // QR-код знайдено!
-        console.log("QR-код розпізнано:", code.data);
-        qrCameraState.scanningActive = false;
-        stopQRCamera();
+    if (typeof jsQR !== 'undefined') {
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert"
+        });
         
-        sessionStorage.setItem('qr_scanned', 'true');
-        window.location.href = 'payment.html';
+        if (code) {
+            console.log("QR-код розпізнано:", code.data);
+            qrCameraState.scanningActive = false;
+            stopQRCamera();
+            sessionStorage.setItem('qr_scanned', 'true');
+            window.location.href = 'payment.html';
+            return;
+        }
+    } else {
+        console.error("jsQR бібліотека не завантажена");
+        stopQRCamera();
         return;
     }
     
-    // Продовжити сканування
     requestAnimationFrame(scanQRCode);
 }
 
@@ -541,8 +572,8 @@ function stopQRCamera() {
  */
 function switchQRCamera() {
     qrCameraState.currentFacingMode = (qrCameraState.currentFacingMode === 'environment') ? 'user' : 'environment';
-    
-    // Stop current scanner and restart with new camera
+    qrCameraState.currentDeviceId = null;
+    localStorage.removeItem('selected_camera_id');
     stopQRCamera();
     startQRCamera();
 }
