@@ -451,6 +451,7 @@ async function startQRCamera() {
     
     if (!qrReaderElement || !fallbackElement) return;
     
+    // Prevent starting if already scanning
     if (qrCameraState.isScanning) {
         return;
     }
@@ -466,6 +467,12 @@ async function startQRCamera() {
         // Initialize html5-qrcode scanner
         if (!qrCameraState.html5QrCode) {
             qrCameraState.html5QrCode = new Html5Qrcode("qr-reader");
+        }
+
+        // Hide video element at the start
+        const videoElement = document.getElementById('camera-stream');
+        if (videoElement) {
+            videoElement.style.display = 'none';
         }
 
         // Get saved camera device ID
@@ -489,10 +496,13 @@ async function startQRCamera() {
                     cameraId = backCamera.id;
                 } else if (qrCameraState.currentFacingMode === 'user' && frontCamera) {
                     cameraId = frontCamera.id;
-                } else {
+                } else if (devices.length > 0) {
+                    // Safe fallback to first camera
                     cameraId = devices[0].id;
                 }
-                qrCameraState.currentDeviceId = cameraId;
+                if (cameraId) {
+                    qrCameraState.currentDeviceId = cameraId;
+                }
             }
         }
 
@@ -503,12 +513,16 @@ async function startQRCamera() {
             aspectRatio: 16/9
         };
 
+        // Set isScanning flag BEFORE starting to prevent race conditions
+        qrCameraState.isScanning = true;
+
         // Start scanning
         await qrCameraState.html5QrCode.start(
             cameraId || { facingMode: qrCameraState.currentFacingMode },
             config,
             (decodedText, decodedResult) => {
                 // QR Code detected! Stop scanning and go to payment
+                console.log('QR код розпізнано:', decodedText);
                 onQRCodeDetected(decodedText);
             },
             (errorMessage) => {
@@ -516,16 +530,10 @@ async function startQRCamera() {
             }
         );
 
-        qrCameraState.isScanning = true;
         fallbackElement.classList.remove('active');
-        
-        // Hide video element if present
-        const videoElement = document.getElementById('camera-stream');
-        if (videoElement) {
-            videoElement.style.display = 'none';
-        }
     } catch (error) {
         console.error("Помилка запуску QR сканера:", error);
+        qrCameraState.isScanning = false; // Reset flag on error
         showQRCameraFallback();
     }
 }
@@ -534,7 +542,6 @@ async function startQRCamera() {
  * Handle QR code detection
  */
 function onQRCodeDetected(qrCodeData) {
-    console.log('QR код розпізнано:', qrCodeData);
     
     // Stop scanning
     if (qrCameraState.html5QrCode && qrCameraState.isScanning) {
