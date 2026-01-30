@@ -1,9 +1,10 @@
-# Testing Guide for SPA Version
+# Testing Guide for Iframe-based SPA Wrapper
 
 ## How to Test
 
 1. **Open the Application**
    - Open `test/index.html` in a modern web browser
+   - Or use HTTP server: `python3 -m http.server 8000` then open `http://localhost:8000/test/index.html`
    - The app should start on the Transport page
 
 2. **Test Navigation**
@@ -11,100 +12,100 @@
    - Click "Літак" → Should navigate to Settings page (#settings)
    - Click back button → Should return to Transport page
    - Use browser back/forward buttons → Should navigate correctly
+   - Watch the loading indicator appear briefly during transitions
 
-3. **Test QR Scanner**
+3. **Test Hash Routing**
+   - URL should update with hash: `test/index.html#transport`, `test/index.html#qr`, etc.
+   - Try entering URL directly: `test/index.html#payment` → Should load payment page
+   - Refresh browser → Should stay on current page
+
+4. **Test QR Scanner**
    - From Archive page, click "Відсканувати QR-код" button
    - Camera should start (permission required)
-   - Camera quality should be high (4096x2160, 60fps if supported)
+   - Navigation from QR page should stop camera
    - Click X button → Should return to Archive page
-   - Click lightning button → Should navigate to Payment page
 
-4. **Test Payment Page**
-   - From QR page, click lightning button
-   - Quantity controls (+/-) should work
-   - Total price should update correctly
-   - Enter transport number → Should accept only digits
-   - Click "Купити" → Should create ticket and navigate to Archive
+5. **Test Payment Page**
+   - Navigate to Transport → Міський транспорт → Settings → Back to transport → Міський транспорт → Archive → Go to QR → Back to archive
+   - All transitions should be smooth without page reloads
+   - Test quantity controls (+/-) and other interactive elements
 
-5. **Test Archive Page**
-   - Should display all saved tickets
-   - Active tickets should show countdown timer
-   - Expired tickets should appear grayed out
-   - Click info icon → Should open modal with company details
-   - Modal should close properly
-
-6. **Test Settings Page**
-   - Statistics should display correctly
-   - Toggle "Локальне збереження" → Should work
-   - "Очистити історію" → Should show confirmation modal
-   - "Очистити кеш" → Should work
-   - "Вибір камери" → Should show available cameras
-
-7. **Test Fullscreen**
-   - Double-click on empty space → Should toggle fullscreen
-   - Navigate between pages in fullscreen → Should stay fullscreen
-   - Exit fullscreen manually → Should remember state
+6. **Test Fullscreen**
+   - Enter fullscreen mode (F11 or double-click)
+   - Navigate between pages → Should stay fullscreen
+   - Fullscreen should be preserved during all transitions
 
 ## Expected Behavior
 
 ### Navigation
 - ✅ No page reloads
-- ✅ Instant page transitions
+- ✅ Instant page transitions with brief loading indicator
 - ✅ URL hash updates (#transport, #index, etc.)
-- ✅ Browser history works
+- ✅ Browser history works correctly
 - ✅ Fullscreen preserved during navigation
+- ✅ Original HTML files loaded in iframe
 
-### QR Camera
-- ✅ Starts automatically on QR page
-- ✅ Stops when leaving QR page
-- ✅ High quality (4096x2160, 60fps if supported)
-- ✅ Camera switch works
+### Content Loading
+- ✅ Pages load from parent directory (../transport.html, etc.)
+- ✅ All original styling preserved
+- ✅ All original functionality works
+- ✅ No modifications to original files needed
 
-### Tickets
-- ✅ Countdown timers work correctly
-- ✅ Expired tickets show properly
-- ✅ LocalStorage persistence works
-- ✅ Multiple serial numbers for multiple passengers
+### Iframe Behavior
+- ✅ Iframe fills entire viewport
+- ✅ No borders or scrollbars on iframe
+- ✅ Navigation clicks intercepted properly
+- ✅ postMessage communication works between iframe and parent
 
-### Styling
-- ✅ All pages styled correctly
-- ✅ No visual glitches during transitions
-- ✅ Responsive design works
+## Differences from Original Multi-page Version
 
-## Known Limitations
+### Advantages
+1. **Fullscreen Preservation**: Unlike multi-page version, fullscreen never breaks
+2. **Faster Navigation**: No page reloads mean instant transitions
+3. **Browser History**: Back/forward buttons work more predictably
+4. **Single Entry Point**: Only need to open one file
 
-1. **QR Scanning**: Actual QR code detection depends on jsQR library being loaded properly
-2. **Camera Quality**: High quality settings (4096x2160, 60fps) may fallback to lower quality on unsupported devices
-3. **LocalStorage**: If disabled in browser, tickets won't persist
+### Potential Issues
+1. **Same-origin Policy**: Must be served via HTTP for full functionality
+   - File protocol (file://) may have iframe restrictions
+   - Use HTTP server for best results
+2. **Navigation Interception**: Some navigation methods may not be caught
+   - Direct `window.location` assignments in iframe are intercepted
+   - `window.history.back()` may cause issues if not properly handled
 
 ## Troubleshooting
 
-### Camera Not Working
-- Check browser permissions
-- Try different browser
-- Check console for errors
+### Pages Not Loading
+- **Check**: Are you using HTTP server or file:// protocol?
+- **Solution**: Use HTTP server: `python3 -m http.server 8000`
+- **Check**: Browser console for CORS or iframe errors
 
 ### Navigation Not Working
-- Check console for JavaScript errors
-- Verify all templates are loaded
-- Check that jsQR loaded before app.js
+- **Check**: Browser console for JavaScript errors
+- **Check**: Is navigation interception working? (Check console logs)
+- **Try**: Refresh the page and try again
 
-### Timers Not Updating
-- Check if JavaScript is running
-- Look for errors in console
-- Verify displayTicketsOnIndexPage is called
+### Content Not Visible
+- **Check**: Is iframe loading? (Check browser dev tools)
+- **Check**: Are original HTML files in parent directory?
+- **Solution**: Ensure file paths are correct (../transport.html, etc.)
+
+### Fullscreen Issues
+- **Check**: Browser permissions for fullscreen
+- **Try**: Use F11 or browser fullscreen option
+- **Note**: Some browsers may exit fullscreen on certain actions
 
 ## Browser Compatibility
 
 Tested on:
-- ✅ Chrome/Edge (Chromium)
-- ✅ Firefox
-- ✅ Safari (desktop)
-- ✅ Mobile browsers (Chrome, Safari)
+- ✅ Chrome/Edge (Chromium) - Full support
+- ✅ Firefox - Full support
+- ✅ Safari (desktop) - Full support
+- ✅ Mobile browsers (Chrome, Safari) - Full support
 
 Requires:
-- ES6+ JavaScript support
-- MediaDevices API (for camera)
-- LocalStorage
-- Template element support
-- History API
+- ES6+ JavaScript support (Proxy, arrow functions, const/let)
+- iframe support
+- postMessage API
+- History API (hash routing)
+- Modern event listeners (addEventListener)
