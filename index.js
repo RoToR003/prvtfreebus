@@ -434,20 +434,146 @@ function displayTicketsOnIndexPage() {
 // QR СТОРІНКА (qr.html)
 // ============================================
 
+// QR Camera state
+let qrCameraState = {
+    currentFacingMode: 'environment',
+    currentDeviceId: null
+};
+
+/**
+ * Start the camera for QR scanning
+ */
+async function startQRCamera() {
+    const videoElement = document.getElementById('camera-stream');
+    const fallbackElement = document.getElementById('camera-fallback');
+    
+    if (!videoElement || !fallbackElement) return;
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+            // Отримуємо налаштування камери з localStorage
+            const savedDeviceId = localStorage.getItem('selected_camera_id');
+            
+            // Налаштування для максимальної якості
+            const constraints = {
+                video: {
+                    facingMode: qrCameraState.currentFacingMode,
+                    width: { ideal: 4096 },
+                    height: { ideal: 2160 },
+                    aspectRatio: { ideal: 16/9 },
+                    frameRate: { ideal: 60, min: 30 }
+                }
+            };
+            
+            // Якщо є збережений deviceId, використовуємо його
+            if (savedDeviceId && qrCameraState.currentDeviceId === null) {
+                constraints.video.deviceId = { exact: savedDeviceId };
+                delete constraints.video.facingMode;
+            } else if (qrCameraState.currentDeviceId) {
+                constraints.video.deviceId = { exact: qrCameraState.currentDeviceId };
+                delete constraints.video.facingMode;
+            }
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoElement.srcObject = stream;
+            fallbackElement.classList.remove('active');
+            
+            // Зберігаємо поточний deviceId
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack) {
+                qrCameraState.currentDeviceId = videoTrack.getSettings().deviceId;
+            }
+        } catch (error) {
+            console.error("Помилка:", error);
+            // Якщо не вдалося з високою якістю, пробуємо базові налаштування
+            try {
+                const basicConstraints = {
+                    video: { facingMode: qrCameraState.currentFacingMode }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+                videoElement.srcObject = stream;
+                fallbackElement.classList.remove('active');
+            } catch (fallbackError) {
+                console.error("Базова помилка:", fallbackError);
+                showQRCameraFallback();
+            }
+        }
+    } else {
+        showQRCameraFallback();
+    }
+}
+
+/**
+ * Show camera fallback
+ */
+function showQRCameraFallback() {
+    const videoElement = document.getElementById('camera-stream');
+    const fallbackElement = document.getElementById('camera-fallback');
+    if (videoElement && fallbackElement) {
+        videoElement.style.display = 'none';
+        fallbackElement.classList.add('active');
+    }
+}
+
+/**
+ * Stop the camera
+ */
+function stopQRCamera() {
+    const videoElement = document.getElementById('camera-stream');
+    if (videoElement && videoElement.srcObject) {
+        videoElement.srcObject.getTracks().forEach(track => track.stop());
+        videoElement.srcObject = null;
+    }
+}
+
+/**
+ * Switch camera (front/back)
+ */
+function switchQRCamera() {
+    qrCameraState.currentFacingMode = (qrCameraState.currentFacingMode === 'environment') ? 'user' : 'environment';
+    qrCameraState.currentDeviceId = null; // Скидаємо deviceId при перемиканні
+    stopQRCamera();
+    startQRCamera();
+}
+
+/**
+ * Go to payment from QR page
+ */
+function goToPaymentFromQR() {
+    // Зберегти мітку про сканування
+    sessionStorage.setItem('qr_scanned', 'true');
+    // Перейти на сторінку оплати
+    goToPage('payment');
+}
+
 /**
  * Ініціалізація QR сторінки
  */
 function initQRPage() {
+    // Start camera
+    startQRCamera();
+    
+    // Setup switch camera button
+    const switchBtn = document.querySelector('.circle-btn[onclick*="switchCamera"]');
+    if (switchBtn) {
+        switchBtn.removeAttribute('onclick');
+        switchBtn.addEventListener('click', switchQRCamera);
+    }
+    
+    // Setup payment button
+    const paymentBtn = document.querySelector('.circle-btn[onclick*="goToPayment"]');
+    if (paymentBtn) {
+        paymentBtn.removeAttribute('onclick');
+        paymentBtn.addEventListener('click', goToPaymentFromQR);
+    }
+    
     // При кліку на будь-яку область екрану переходимо на оплату
     const overlay = document.querySelector('.overlay');
     if (overlay) {
         overlay.addEventListener('click', function(e) {
-            // Якщо клік не на кнопку закриття
-            if (!e.target.closest('.icon-btn')) {
-                // Зберегти мітку про сканування
-                sessionStorage.setItem('qr_scanned', 'true');
-                // Перейти на сторінку оплати
-                goToPage('payment');
+            // Якщо клік не на кнопку закриття або інші кнопки
+            if (!e.target.closest('.icon-btn') && !e.target.closest('.circle-btn')) {
+                goToPaymentFromQR();
             }
         });
     }
@@ -465,11 +591,39 @@ function initPaymentPage() {
         const buyBtn = document.querySelector('.buy-btn');
         const transportInput = document.querySelector('.transport-input');
         const qtyInput = document.getElementById('qty-input');
+        const minusBtn = document.getElementById('btn-minus');
+        const plusBtn = document.getElementById('btn-plus');
+        const totalPriceEl = document.getElementById('total-price');
+        const pricePerTicket = 12.00;
         
         if (!buyBtn || !transportInput || !qtyInput) return;
         
         // Генерація рандомних даних картки
         generateRandomCardData();
+        
+        // Логіка лічильника пасажирів
+        if (plusBtn && minusBtn && totalPriceEl) {
+            const updateTotal = (qty) => {
+                const total = (qty * pricePerTicket).toFixed(2);
+                totalPriceEl.textContent = `${total} UAH`;
+            };
+            
+            plusBtn.addEventListener('click', () => {
+                let val = parseInt(qtyInput.value);
+                val++;
+                qtyInput.value = val;
+                updateTotal(val);
+            });
+
+            minusBtn.addEventListener('click', () => {
+                let val = parseInt(qtyInput.value);
+                if (val > 1) {
+                    val--;
+                    qtyInput.value = val;
+                    updateTotal(val);
+                }
+            });
+        }
         
         // Обробник кнопки "Купити"
         buyBtn.addEventListener('click', function() {
@@ -1195,6 +1349,9 @@ const SPA = {
     },
     
     async loadPage(page, pushState = true) {
+        // Cleanup previous page
+        this.cleanupCurrentPage();
+        
         this.showTransition();
         
         try {
@@ -1224,6 +1381,14 @@ const SPA = {
         } catch (error) {
             console.error('Помилка завантаження сторінки:', error);
             this.hideTransition();
+        }
+    },
+    
+    cleanupCurrentPage() {
+        // Cleanup based on current page
+        if (this.currentPage === 'qr') {
+            // Stop camera when leaving QR page
+            stopQRCamera();
         }
     },
     
