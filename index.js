@@ -11,7 +11,8 @@ const CONFIG = {
     STATISTICS_KEY: 'transport_statistics',
     CACHE_KEY: 'transport_cache',
     CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 години в мілісекундах
-    FULLSCREEN_KEY: 'fullscreen_enabled'
+    FULLSCREEN_KEY: 'fullscreen_enabled',
+    QR_SCAN_SCALE: 0.5 // 50% від оригінального розміру для швидшого сканування
 };
 
 // ============================================
@@ -535,9 +536,7 @@ function scanQRCode() {
     // Використовуємо меншу роздільність для швидшого сканування
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    
-    // Використовуємо меншу роздільність для швидшого сканування
-    const scale = 0.5; // 50% від оригінального розміру
+    const scale = CONFIG.QR_SCAN_SCALE;
     canvas.width = videoElement.videoWidth * scale;
     canvas.height = videoElement.videoHeight * scale;
     
@@ -1321,27 +1320,62 @@ function updateCacheSizeDisplay() {
  */
 function goToPrivat24() {
     // Deep link до додатку Privat24
-    // Для Android
-    const androidLink = 'intent://privat24#Intent;scheme=privat24;package=ua.privatbank.ap24;end';
-    // Для iOS
     const iosLink = 'privat24://';
-    // Fallback - веб версія
+    const androidLink = 'intent://privat24#Intent;scheme=privat24;package=ua.privatbank.ap24;end';
     const webLink = 'https://next.privat24.ua/';
     
-    // Спробувати відкрити додаток
-    window.location.href = iosLink;
+    // Визначити платформу
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
     
-    // Fallback після затримки якщо додаток не відкрився
-    setTimeout(() => {
+    let attemptedDeepLink = false;
+    let fallbackTimer;
+    
+    // Функція для скасування fallback якщо додаток відкрився
+    const cancelFallback = () => {
+        if (fallbackTimer) {
+            clearTimeout(fallbackTimer);
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+    
+    // Обробник зміни видимості сторінки
+    const handleVisibilityChange = () => {
+        if (document.hidden) {
+            // Сторінка стала невидимою - ймовірно додаток відкрився
+            cancelFallback();
+        }
+    };
+    
+    // Спробувати відкрити додаток залежно від платформи
+    if (isIOS) {
+        window.location.href = iosLink;
+        attemptedDeepLink = true;
+    } else if (isAndroid) {
+        window.location.href = androidLink;
+        attemptedDeepLink = true;
+    }
+    
+    if (attemptedDeepLink) {
+        // Відстежувати зміну видимості сторінки
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Fallback після затримки якщо додаток не відкрився
+        fallbackTimer = setTimeout(() => {
+            cancelFallback();
+            window.location.href = webLink;
+        }, 1500);
+    } else {
+        // Невідома платформа - відкрити веб версію
         window.location.href = webLink;
-    }, 1500);
+    }
 }
 
 /**
  * Ініціалізація transport сторінки
  */
 function initTransportPage() {
-    const backBtn = document.querySelector('.back-btn, .icon-btn');
+    const backBtn = document.querySelector('.top-bar .back-btn');
     if (backBtn) {
         backBtn.addEventListener('click', (e) => {
             e.preventDefault();
