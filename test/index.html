@@ -38,13 +38,15 @@
             font-family: 'Roboto', sans-serif;
             z-index: 9999;
             opacity: 1;
-            transition: opacity 0.2s;
+            visibility: visible;
+            transition: opacity 0.2s, visibility 0s 0.2s;
         }
         
         .loading.hidden {
             opacity: 0;
-            pointer-events: none;
             visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s, visibility 0s 0.2s;
         }
     </style>
 </head>
