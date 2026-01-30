@@ -476,13 +476,16 @@ async function startQRCamera() {
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (error) {
-            console.log("Висока якість не підтримується, пробуємо базові налаштування");
+            console.log("Висока якість не підтримується, пробуємо базові налаштування", error.name);
             // Fallback на базові налаштування
             const basicConstraints = {
                 video: { facingMode: qrCameraState.currentFacingMode }
             };
-            if (savedDeviceId) {
+            if (savedDeviceId && !qrCameraState.currentDeviceId) {
                 basicConstraints.video.deviceId = { exact: savedDeviceId };
+                delete basicConstraints.video.facingMode;
+            } else if (qrCameraState.currentDeviceId) {
+                basicConstraints.video.deviceId = { exact: qrCameraState.currentDeviceId };
                 delete basicConstraints.video.facingMode;
             }
             stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
