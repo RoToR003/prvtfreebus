@@ -550,7 +550,6 @@ function onQRCodeDetected(qrCodeData) {
         goToPaymentFromQR();
     }
 }
-}
 
 /**
  * Show camera fallback
