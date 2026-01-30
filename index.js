@@ -487,15 +487,12 @@ async function startQRCamera() {
         console.error("Помилка камери:", error);
         
         // If the saved device ID is invalid, clear it and retry with facingMode
-        if (error.name === 'OverconstrainedError' || error.name === 'NotFoundError') {
-            const savedDeviceId = localStorage.getItem('selected_camera_id');
-            if (savedDeviceId) {
-                console.log("Збережений deviceId недійсний, повторна спроба з facingMode");
-                localStorage.removeItem('selected_camera_id');
-                qrCameraState.currentDeviceId = null;
-                startQRCamera();
-                return;
-            }
+        if ((error.name === 'OverconstrainedError' || error.name === 'NotFoundError') && localStorage.getItem('selected_camera_id')) {
+            console.log("Збережений deviceId недійсний, повторна спроба з facingMode");
+            localStorage.removeItem('selected_camera_id');
+            qrCameraState.currentDeviceId = null;
+            startQRCamera();
+            return;
         }
         
         showQRCameraFallback();
@@ -537,7 +534,7 @@ function scanQRCode() {
         }
     } else {
         console.error("jsQR бібліотека не завантажена");
-        qrCameraState.scanningActive = false;
+        stopQRCamera();
         return;
     }
     
@@ -576,6 +573,7 @@ function stopQRCamera() {
 function switchQRCamera() {
     qrCameraState.currentFacingMode = (qrCameraState.currentFacingMode === 'environment') ? 'user' : 'environment';
     qrCameraState.currentDeviceId = null;
+    localStorage.removeItem('selected_camera_id');
     stopQRCamera();
     startQRCamera();
 }
