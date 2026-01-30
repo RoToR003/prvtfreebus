@@ -15,12 +15,18 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+            position: fixed;
+            -webkit-text-size-adjust: 100%;
         }
         
         #app-frame {
             width: 100%;
             height: 100%;
             border: none;
+            display: block;
+            /* Виправлення viewport */
+            transform: scale(1);
+            transform-origin: 0 0;
         }
         
         .loading {
@@ -77,6 +83,11 @@
                 // Коли iframe завантажився
                 this.frame.addEventListener('load', () => this.onFrameLoad());
                 
+                // Виправлення при зміні розміру екрану
+                window.addEventListener('resize', () => {
+                    this.fixViewport();
+                });
+                
                 // Початкова сторінка
                 const hash = window.location.hash.slice(1) || 'transport';
                 this.navigate(hash);
@@ -104,6 +115,7 @@
             
             onFrameLoad() {
                 this.hideLoading();
+                this.fixViewport();
                 this.injectNavigationOverride();
             },
             
@@ -113,10 +125,40 @@
                 }
             },
             
+            fixViewport() {
+                if (!this.frame) return;
+                
+                try {
+                    const frameDoc = this.frame.contentDocument || this.frame.contentWindow.document;
+                    
+                    // Синхронізація розміру
+                    if (frameDoc.body) {
+                        frameDoc.body.style.width = '100%';
+                        frameDoc.body.style.height = '100%';
+                    }
+                } catch (err) {
+                    // Ignore cross-origin errors
+                }
+            },
+            
             injectNavigationOverride() {
                 try {
                     const frameDoc = this.frame.contentDocument || this.frame.contentWindow.document;
                     const frameWin = this.frame.contentWindow;
+                    
+                    // Виправлення viewport в iframe
+                    let viewport = frameDoc.querySelector('meta[name="viewport"]');
+                    if (viewport) {
+                        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                    }
+                    
+                    // Виправлення масштабування body
+                    if (frameDoc.body) {
+                        frameDoc.body.style.transform = 'none';
+                        frameDoc.body.style.transformOrigin = 'unset';
+                        frameDoc.body.style.width = '100%';
+                        frameDoc.body.style.height = '100%';
+                    }
                     
                     // Перехоплюємо кліки на посилання
                     frameDoc.addEventListener('click', (e) => {
