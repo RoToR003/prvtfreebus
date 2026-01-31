@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ПриватБанк Транспорт</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#8bc34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Транспорт">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #app-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        #app-frame.fade-out {
+            opacity: 0;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            z-index: 9999;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease-in-out, visibility 0s;
+        }
+        
+        .loading.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out, visibility 0s 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">Завантаження...</div>
+    <iframe id="app-frame" src="about:blank"></iframe>
+
+    <script>
+        const SPA = {
+            frame: null,
+            loading: null,
+            currentPage: null,
+            isTransitioning: false,
+            history: [],
+            
+            pages: {
+                'transport': '../transport.html',
+                'index': '../index.html',
+                'qr': '../qr.html',
+                'payment': '../payment.html',
+                'settings': '../settings.html'
+            },
+            
+            init() {
+                this.frame = document.getElementById('app-frame');
+                this.loading = document.getElementById('loading');
+                
+                // Слухаємо зміни hash
+                window.addEventListener('hashchange', () => this.onHashChange());
+                
+                // Слухаємо кнопку "Назад" браузера (popstate)
+                window.addEventListener('popstate', (e) => this.onPopState(e));
+                
+                // Слухаємо повідомлення від iframe для навігації
+                window.addEventListener('message', (e) => this.onMessage(e));
+                
+                // Коли iframe завантажився
+                this.frame.addEventListener('load', () => this.onFrameLoad());
+                
+                // Початкова сторінка
+                const hash = window.location.hash.slice(1) || 'transport';
+                this.navigate(hash, true);
+            },
+            
+            navigate(page, isInitial = false) {
+                if (!this.pages[page]) {
+                    page = 'transport';
+                }
+                
+                if (this.currentPage === page && !isInitial) return;
+                if (this.isTransitioning) return;
+                
+                this.isTransitioning = true;
+                
+                // Додаємо fade-out ефект
+                this.frame.classList.add('fade-out');
+                this.showLoading();
+                
+                // Оновлюємо history state
+                if (!isInitial) {
+                    history.pushState({ page: page }, '', '#' + page);
+                    this.history.push(page);
+                } else {
+                    history.replaceState({ page: page }, '', '#' + page);
+                    this.history = [page];
+                }
+                
+                // Чекаємо завершення fade-out перед зміною сторінки
+                setTimeout(() => {
+                    this.frame.src = this.pages[page];
+                    this.currentPage = page;
+                }, 150);
+            },
+            
+            onHashChange() {
+                const hash = window.location.hash.slice(1) || 'transport';
+                if (hash !== this.currentPage && !this.isTransitioning) {
+                    this.navigate(hash);
+                }
+            },
+            
+            onPopState(e) {
+                // Обробка кнопки "Назад"
+                const hash = window.location.hash.slice(1) || 'transport';
+                if (hash !== this.currentPage) {
+                    // Не додаємо в history, бо це вже є навігація назад
+                    if (this.isTransitioning) return;
+                    
+                    this.isTransitioning = true;
+                    this.frame.classList.add('fade-out');
+                    this.showLoading();
+                    
+                    setTimeout(() => {
+                        this.frame.src = this.pages[hash];
+                        this.currentPage = hash;
+                        // Видаляємо останню сторінку з history
+                        if (this.history.length > 1) {
+                            this.history.pop();
+                        }
+                    }, 150);
+                }
+            },
+            
+            onFrameLoad() {
+                // Видаляємо fade-out та показуємо сторінку
+                setTimeout(() => {
+                    this.frame.classList.remove('fade-out');
+                    this.hideLoading();
+                    this.isTransitioning = false;
+                }, 100);
+                
+                this.injectNavigationOverride();
+            },
+            
+            onMessage(e) {
+                if (e.data && e.data.type === 'navigate') {
+                    this.navigate(e.data.page);
+                }
+            },
+            
+            injectNavigationOverride() {
+                try {
+                    const frameDoc = this.frame.contentDocument || this.frame.contentWindow.document;
+                    const frameWin = this.frame.contentWindow;
+                    
+                    // Додаємо глобальну функцію goToPage в iframe
+                    frameWin.goToPage = (page) => {
+                        window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                    };
+                    
+                    // Додаємо функцію для кнопки "Назад"
+                    frameWin.goBack = () => {
+                        window.parent.history.back();
+                    };
+                    
+                    // Перехоплюємо ВСІ кліки (включаючи inline onclick)
+                    frameDoc.addEventListener('click', (e) => {
+                        const link = e.target.closest('a[href], button[onclick], .icon-btn[onclick], .back-btn');
+                        if (link) {
+                            const href = link.getAttribute('href') || '';
+                            const onclick = link.getAttribute('onclick') || '';
+                            
+                            let page = null;
+                            
+                            // Перевірка href
+                            if (href.includes('transport.html')) page = 'transport';
+                            else if (href.includes('index.html')) page = 'index';
+                            else if (href.includes('qr.html')) page = 'qr';
+                            else if (href.includes('payment.html')) page = 'payment';
+                            else if (href.includes('settings.html')) page = 'settings';
+                            
+                            // Перевірка onclick
+                            if (!page && onclick) {
+                                if (onclick.includes('transport.html')) page = 'transport';
+                                else if (onclick.includes('index.html')) page = 'index';
+                                else if (onclick.includes('qr.html')) page = 'qr';
+                                else if (onclick.includes('payment.html')) page = 'payment';
+                                else if (onclick.includes('settings.html')) page = 'settings';
+                            }
+                            
+                            if (page) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
+                                
+                                // Зупинити камеру якщо це QR сторінка
+                                if (frameWin.stopQRCamera) {
+                                    frameWin.stopQRCamera();
+                                }
+                                
+                                window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                                return false;
+                            }
+                        }
+                    }, true);
+                    
+                    // Перехоплюємо пряме присвоєння location.href
+                    const originalLocationSetter = Object.getOwnPropertyDescriptor(frameWin.Location.prototype, 'href').set;
+                    Object.defineProperty(frameWin.location, 'href', {
+                        set: function(value) {
+                            let page = null;
+                            if (value.includes('transport.html')) page = 'transport';
+                            else if (value.includes('index.html')) page = 'index';
+                            else if (value.includes('qr.html')) page = 'qr';
+                            else if (value.includes('payment.html')) page = 'payment';
+                            else if (value.includes('settings.html')) page = 'settings';
+                            
+                            if (page) {
+                                window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                            } else {
+                                originalLocationSetter.call(this, value);
+                            }
+                        },
+                        get: function() {
+                            return frameWin.location.href;
+                        }
+                    });
+                    
+                } catch (err) {
+                    console.log('Cannot inject navigation override:', err);
+                }
+            },
+            
+            showLoading() {
+                this.loading.classList.remove('hidden');
+            },
+            
+            hideLoading() {
+                this.loading.classList.add('hidden');
+            }
+        };
+        
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', () => SPA.init());
+        
+        // Реєстрація Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('../service-worker.js')
+                .then((reg) => console.log('SW registered'))
+                .catch((err) => console.log('SW failed:', err));
+        }
+    </script>
+</body>
+</html>
