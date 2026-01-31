@@ -1962,6 +1962,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Відстежувати стан мережі
     initNetworkMonitoring();
+    
+    // Реєстрація Service Worker для офлайн режиму
+    if ('serviceWorker' in navigator && isOfflineModeEnabled()) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(registration => {
+                console.log('✅ Service Worker зареєстровано:', registration.scope);
+            })
+            .catch(error => {
+                console.log('❌ Помилка реєстрації Service Worker:', error);
+            });
+    }
 });
 
 // ============================================
