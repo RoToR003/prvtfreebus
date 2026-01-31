@@ -12,6 +12,7 @@ const CONFIG = {
     CACHE_KEY: 'transport_cache',
     CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 години в мілісекундах
     FULLSCREEN_KEY: 'fullscreen_enabled',
+    DBLCLICK_FULLSCREEN_KEY: 'dblclick_fullscreen_enabled',
     QR_SCAN_SCALE: 0.5 // 50% від оригінального розміру для швидшого сканування
 };
 
@@ -451,7 +452,31 @@ async function startQRCamera() {
     
     if (!videoElement || !fallbackElement) return;
     
+    // Перевірка підтримки камери
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('Camera API not supported');
+        showQRCameraFallback();
+        return;
+    }
+    
     try {
+        // Спочатку запитуємо дозвіл (якщо API доступний)
+        // Note: Permissions API для 'camera' не підтримується у всіх браузерах
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const permissions = await navigator.permissions.query({ name: 'camera' });
+                
+                if (permissions.state === 'denied') {
+                    alert('Для сканування QR-коду потрібен доступ до камери. Будь ласка, надайте дозвіл в налаштуваннях.');
+                    showQRCameraFallback();
+                    return;
+                }
+            } catch (permErr) {
+                // Деякі браузери не підтримують query для camera
+                console.log('Permission query not supported:', permErr);
+            }
+        }
+        
         const savedDeviceId = localStorage.getItem('selected_camera_id');
         
         // Оптимізовані налаштування для швидкого сканування
@@ -690,14 +715,24 @@ function initPaymentPage() {
                 totalPriceEl.textContent = `${total} UAH`;
             };
             
-            plusBtn.addEventListener('click', () => {
+            // Видалити старі обробники клонуванням елементів
+            const newPlusBtn = plusBtn.cloneNode(true);
+            const newMinusBtn = minusBtn.cloneNode(true);
+            plusBtn.parentNode.replaceChild(newPlusBtn, plusBtn);
+            minusBtn.parentNode.replaceChild(newMinusBtn, minusBtn);
+            
+            newPlusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 let val = parseInt(qtyInput.value);
                 val++;
                 qtyInput.value = val;
                 updateTotal(val);
             });
 
-            minusBtn.addEventListener('click', () => {
+            newMinusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 let val = parseInt(qtyInput.value);
                 if (val > 1) {
                     val--;
@@ -1082,6 +1117,33 @@ function toggleFullscreen() {
 }
 
 /**
+ * Перевірити чи увімкнений fullscreen по подвійному кліку
+ */
+function isDblClickFullscreenEnabled() {
+    const enabled = localStorage.getItem(CONFIG.DBLCLICK_FULLSCREEN_KEY);
+    return enabled === null || enabled === 'true'; // За замовчуванням увімкнено
+}
+
+/**
+ * Перемкнути fullscreen по подвійному кліку
+ */
+function toggleDoubleClickFullscreen() {
+    const currentState = isDblClickFullscreenEnabled();
+    const newState = !currentState;
+    
+    localStorage.setItem(CONFIG.DBLCLICK_FULLSCREEN_KEY, newState.toString());
+    
+    const toggle = document.getElementById('dblclick-toggle');
+    if (toggle) {
+        if (newState) {
+            toggle.classList.add('active');
+        } else {
+            toggle.classList.remove('active');
+        }
+    }
+}
+
+/**
  * Відновити fullscreen при переході між сторінками
  */
 function restoreFullscreenIfNeeded() {
@@ -1414,6 +1476,16 @@ function initSettingsPage() {
                 toggle.classList.remove('active');
             }
         }
+        
+        // Встановити стан перемикача подвійного кліку
+        const dblClickToggle = document.getElementById('dblclick-toggle');
+        if (dblClickToggle) {
+            if (isDblClickFullscreenEnabled()) {
+                dblClickToggle.classList.add('active');
+            } else {
+                dblClickToggle.classList.remove('active');
+            }
+        }
     } catch (error) {
         console.error('Помилка ініціалізації settings page:', error);
     }
@@ -1444,8 +1516,11 @@ function syncStatisticsFromTickets() {
 let lastTap = 0;
 function initDoubleClickFullscreen() {
     document.addEventListener('click', function(e) {
+        // Перевірити чи функція увімкнена
+        if (!isDblClickFullscreenEnabled()) return;
+        
         // Ігнорувати кліки на кнопках та інших інтерактивних елементах
-        if (e.target.closest('button, a, input, .card, .setting-item, .danger-item')) {
+        if (e.target.closest('button, a, input, .card, .setting-item, .danger-item, .toggle-switch')) {
             return;
         }
         

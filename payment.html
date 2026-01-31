@@ -570,35 +570,6 @@
         </div>
     </div>
 
-    <script>
-        // Логіка лічильника пасажирів
-        const input = document.getElementById('qty-input');
-        const minusBtn = document.getElementById('btn-minus');
-        const plusBtn = document.getElementById('btn-plus');
-        const totalPriceEl = document.getElementById('total-price');
-        const pricePerTicket = 12.00;
-
-        plusBtn.addEventListener('click', () => {
-            let val = parseInt(input.value);
-            val++;
-            input.value = val;
-            updateTotal(val);
-        });
-
-        minusBtn.addEventListener('click', () => {
-            let val = parseInt(input.value);
-            if (val > 1) {
-                val--;
-                input.value = val;
-                updateTotal(val);
-            }
-        });
-
-        function updateTotal(qty) {
-            const total = (qty * pricePerTicket).toFixed(2);
-            totalPriceEl.textContent = `${total} UAH`;
-        }
-    </script>
     <script src="index.js"></script>
 </body>
 </html>
