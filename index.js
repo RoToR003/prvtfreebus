@@ -461,6 +461,7 @@ async function startQRCamera() {
     
     try {
         // Спочатку запитуємо дозвіл (якщо API доступний)
+        // Note: Permissions API для 'camera' не підтримується у всіх браузерах
         if (navigator.permissions && navigator.permissions.query) {
             try {
                 const permissions = await navigator.permissions.query({ name: 'camera' });
@@ -1519,7 +1520,7 @@ function initDoubleClickFullscreen() {
         if (!isDblClickFullscreenEnabled()) return;
         
         // Ігнорувати кліки на кнопках та інших інтерактивних елементах
-        if (e.target.closest('button, a, input, .card, .setting-item, .danger-item, .toggle')) {
+        if (e.target.closest('button, a, input, .card, .setting-item, .danger-item, .toggle-switch')) {
             return;
         }
         
