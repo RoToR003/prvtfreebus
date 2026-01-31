@@ -411,6 +411,16 @@
             </div>
         </div>
 
+        <div class="setting-item" onclick="toggleAlwaysFullscreen()">
+            <div class="setting-info">
+                <div class="setting-label">Завжди в повному екрані</div>
+                <div class="setting-description">Зберігати повноекранний режим при переходах між сторінками</div>
+            </div>
+            <div class="toggle-switch" id="always-fullscreen-toggle">
+                <div class="toggle-slider"></div>
+            </div>
+        </div>
+
         <div class="setting-item" onclick="toggleFullscreen()">
             <div class="setting-info">
                 <div class="setting-label">Повноекранний режим</div>
@@ -424,6 +434,16 @@
                 <div class="setting-description">Подвійний клік вмикає повноекранний режим</div>
             </div>
             <div class="toggle-switch active" id="dblclick-toggle">
+                <div class="toggle-slider"></div>
+            </div>
+        </div>
+        
+        <div class="setting-item" onclick="toggleOfflineMode()">
+            <div class="setting-info">
+                <div class="setting-label">Офлайн режим</div>
+                <div class="setting-description">Працювати автономно без інтернету</div>
+            </div>
+            <div class="toggle-switch active" id="offline-toggle">
                 <div class="toggle-slider"></div>
             </div>
         </div>

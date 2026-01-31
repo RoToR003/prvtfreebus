@@ -13,7 +13,19 @@ const CONFIG = {
     CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 години в мілісекундах
     FULLSCREEN_KEY: 'fullscreen_enabled',
     DBLCLICK_FULLSCREEN_KEY: 'dblclick_fullscreen_enabled',
-    QR_SCAN_SCALE: 0.5 // 50% від оригінального розміру для швидшого сканування
+    ALWAYS_FULLSCREEN_KEY: 'always_fullscreen_enabled',
+    OFFLINE_MODE_KEY: 'offline_mode_enabled',
+    QR_SCAN_SCALE: 0.5, // 50% від оригінального розміру для швидшого сканування
+    FULLSCREEN_RESTORE_DELAY: 100, // мс для відновлення fullscreen
+    FULLSCREEN_AUTO_RESTORE_DELAY: 500, // мс для авто-відновлення fullscreen
+    NOTIFICATION_DURATION: 3000, // мс для показу повідомлення
+    NOTIFICATION_ANIMATION_DURATION: 300, // мс для анімації повідомлення
+    NOTIFICATION_COLORS: {
+        success: '#5dc12d',
+        warning: '#ffa726',
+        error: '#ff4444',
+        info: '#3a3a3a'
+    }
 };
 
 // ============================================
@@ -997,6 +1009,33 @@ function preloadImages() {
 }
 
 /**
+ * Попередньо завантажити HTML сторінки для швидких переходів
+ */
+function preloadPages() {
+    if (!isOfflineModeEnabled()) {
+        return; // Не завантажуємо сторінки якщо офлайн режим вимкнений
+    }
+    
+    const pages = [
+        'index.html',
+        'qr.html',
+        'payment.html',
+        'settings.html',
+        'transport.html'
+    ];
+    
+    pages.forEach(page => {
+        // Використовуємо fetch для попереднього завантаження
+        // Service Worker обробить кешування з правильною стратегією
+        fetch(page, { 
+            method: 'GET'
+        }).catch(err => {
+            console.log('Не вдалося попередньо завантажити сторінку:', page, err);
+        });
+    });
+}
+
+/**
  * Отримати статистику поїздок
  */
 function getTicketStatistics() {
@@ -1144,17 +1183,82 @@ function toggleDoubleClickFullscreen() {
 }
 
 /**
+ * Перевірити чи увімкнений режим "завжди в повному екрані"
+ */
+function isAlwaysFullscreenEnabled() {
+    const enabled = localStorage.getItem(CONFIG.ALWAYS_FULLSCREEN_KEY);
+    return enabled === 'true'; // За замовчуванням вимкнено для кращого UX
+}
+
+/**
+ * Перемкнути режим "завжди в повному екрані"
+ */
+function toggleAlwaysFullscreen() {
+    const currentState = isAlwaysFullscreenEnabled();
+    const newState = !currentState;
+    
+    localStorage.setItem(CONFIG.ALWAYS_FULLSCREEN_KEY, newState.toString());
+    
+    const toggle = document.getElementById('always-fullscreen-toggle');
+    if (toggle) {
+        if (newState) {
+            toggle.classList.add('active');
+        } else {
+            toggle.classList.remove('active');
+        }
+    }
+    
+    // Якщо увімкнено, то одразу активувати fullscreen
+    if (newState && !document.fullscreenElement) {
+        toggleFullscreen();
+    }
+}
+
+/**
+ * Перевірити чи увімкнений офлайн режим
+ */
+function isOfflineModeEnabled() {
+    const enabled = localStorage.getItem(CONFIG.OFFLINE_MODE_KEY);
+    // За замовчуванням увімкнено для підтримки PWA та автономної роботи
+    return enabled === null || enabled === 'true';
+}
+
+/**
+ * Перемкнути офлайн режим
+ */
+function toggleOfflineMode() {
+    const currentState = isOfflineModeEnabled();
+    const newState = !currentState;
+    
+    localStorage.setItem(CONFIG.OFFLINE_MODE_KEY, newState.toString());
+    
+    const toggle = document.getElementById('offline-toggle');
+    if (toggle) {
+        if (newState) {
+            toggle.classList.add('active');
+        } else {
+            toggle.classList.remove('active');
+        }
+    }
+}
+
+/**
  * Відновити fullscreen при переході між сторінками
  */
 function restoreFullscreenIfNeeded() {
+    const alwaysFullscreen = isAlwaysFullscreenEnabled();
     const wasFullscreen = sessionStorage.getItem(CONFIG.FULLSCREEN_KEY);
-    if (wasFullscreen === 'true' && !document.fullscreenElement) {
+    
+    // Якщо увімкнено "завжди в повному екрані" АБО fullscreen був активний
+    if ((alwaysFullscreen || wasFullscreen === 'true') && !document.fullscreenElement) {
         // Невелика затримка для завантаження сторінки
         setTimeout(() => {
-            document.documentElement.requestFullscreen().catch(err => {
+            document.documentElement.requestFullscreen().then(() => {
+                sessionStorage.setItem(CONFIG.FULLSCREEN_KEY, 'true');
+            }).catch(err => {
                 console.log('Помилка відновлення fullscreen:', err);
             });
-        }, 100);
+        }, CONFIG.FULLSCREEN_RESTORE_DELAY);
     }
 }
 
@@ -1165,9 +1269,139 @@ function monitorFullscreenChanges() {
     document.addEventListener('fullscreenchange', function() {
         if (!document.fullscreenElement) {
             // Користувач вийшов з fullscreen вручну
-            sessionStorage.removeItem(CONFIG.FULLSCREEN_KEY);
+            // Але якщо увімкнено "завжди в повному екрані", повертаємо його
+            if (isAlwaysFullscreenEnabled()) {
+                setTimeout(() => {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log('Не вдалося відновити fullscreen:', err);
+                    });
+                }, CONFIG.FULLSCREEN_AUTO_RESTORE_DELAY);
+            } else {
+                sessionStorage.removeItem(CONFIG.FULLSCREEN_KEY);
+            }
         }
     });
+}
+
+/**
+ * Ініціалізувати відстежування стану мережі
+ */
+function initNetworkMonitoring() {
+    if (!isOfflineModeEnabled()) {
+        return; // Якщо офлайн режим вимкнений, не потрібно відстежувати
+    }
+    
+    // Перевірити стан при завантаженні
+    updateOnlineStatus();
+    
+    // Відстежувати зміни стану мережі
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+}
+
+/**
+ * Оновити статус підключення
+ */
+function updateOnlineStatus() {
+    if (navigator.onLine) {
+        console.log('✅ Додаток в онлайн режимі');
+        // Можна показати повідомлення що з'єднання відновлено
+        if (sessionStorage.getItem('was_offline') === 'true') {
+            showNotification('З\'єднання відновлено', 'success');
+            sessionStorage.removeItem('was_offline');
+        }
+    } else {
+        console.log('⚠️ Додаток в офлайн режимі');
+        sessionStorage.setItem('was_offline', 'true');
+        if (isOfflineModeEnabled()) {
+            showNotification('Працюємо в офлайн режимі. Використовуються кешовані дані.', 'warning');
+        } else {
+            showNotification('Немає підключення до інтернету', 'error');
+        }
+    }
+}
+
+/**
+ * Показати повідомлення користувачу
+ */
+function showNotification(message, type = 'info') {
+    // Перевірка чи існує вже контейнер для повідомлень
+    let notificationContainer = document.getElementById('notification-container');
+    
+    if (!notificationContainer) {
+        // Створити контейнер якщо його немає
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            max-width: 90%;
+            width: 350px;
+        `;
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Отримати колір для типу повідомлення
+    const bgColor = CONFIG.NOTIFICATION_COLORS[type] || CONFIG.NOTIFICATION_COLORS.info;
+    const textColor = type === 'warning' ? '#000' : '#fff';
+    
+    // Створити повідомлення
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        background-color: ${bgColor};
+        color: ${textColor};
+        padding: 14px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideIn 0.3s ease-out;
+        text-align: center;
+    `;
+    notification.textContent = message;
+    
+    // Додати CSS анімацію якщо її ще немає
+    if (!document.getElementById('notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    notificationContainer.appendChild(notification);
+    
+    // Автоматично приховати через заданий час
+    setTimeout(() => {
+        notification.style.animation = `slideOut ${CONFIG.NOTIFICATION_ANIMATION_DURATION}ms ease-out`;
+        setTimeout(() => {
+            notification.remove();
+        }, CONFIG.NOTIFICATION_ANIMATION_DURATION);
+    }, CONFIG.NOTIFICATION_DURATION);
 }
 
 /**
@@ -1486,6 +1720,26 @@ function initSettingsPage() {
                 dblClickToggle.classList.remove('active');
             }
         }
+        
+        // Встановити стан перемикача "завжди в повному екрані"
+        const alwaysFullscreenToggle = document.getElementById('always-fullscreen-toggle');
+        if (alwaysFullscreenToggle) {
+            if (isAlwaysFullscreenEnabled()) {
+                alwaysFullscreenToggle.classList.add('active');
+            } else {
+                alwaysFullscreenToggle.classList.remove('active');
+            }
+        }
+        
+        // Встановити стан перемикача офлайн режиму
+        const offlineToggle = document.getElementById('offline-toggle');
+        if (offlineToggle) {
+            if (isOfflineModeEnabled()) {
+                offlineToggle.classList.add('active');
+            } else {
+                offlineToggle.classList.remove('active');
+            }
+        }
     } catch (error) {
         console.error('Помилка ініціалізації settings page:', error);
     }
@@ -1687,6 +1941,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Попередньо завантажити зображення
     preloadImages();
     
+    // Попередньо завантажити HTML сторінки для офлайн режиму
+    preloadPages();
+    
     // Відновити fullscreen якщо був активний
     restoreFullscreenIfNeeded();
     
@@ -1717,6 +1974,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ініціалізувати подвійний клік для fullscreen на всіх сторінках
     initDoubleClickFullscreen();
+    
+    // Відстежувати стан мережі
+    initNetworkMonitoring();
+    
+    // Реєстрація Service Worker для офлайн режиму
+    if ('serviceWorker' in navigator && isOfflineModeEnabled()) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(registration => {
+                console.log('✅ Service Worker зареєстровано:', registration.scope);
+            })
+            .catch(error => {
+                console.log('❌ Помилка реєстрації Service Worker:', error);
+            });
+    }
 });
 
 // ============================================
