@@ -1,12 +1,11 @@
 const CACHE_NAME = 'transport-v1';
 const urlsToCache = [
-    '/test/index.html',
-    '/index.html',
-    '/qr.html',
-    '/payment.html',
-    '/settings.html',
-    '/transport.html',
-    '/index.js'
+    '/prvtfreebus/testv2/index.html',
+    '/prvtfreebus/testv2/qr.html',
+    '/prvtfreebus/testv2/payment.html',
+    '/prvtfreebus/testv2/settings.html',
+    '/prvtfreebus/testv2/transport.html',
+    '/prvtfreebus/testv2/index.js'
     // Note: External CDN resources are not cached to avoid stale cache issues
     // They will be fetched from network when available
     // 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
