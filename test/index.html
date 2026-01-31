@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ПриватБанк Транспорт</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#8bc34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Транспорт">
+    
     <style>
         * {
             margin: 0;
@@ -122,30 +130,41 @@
                     const frameDoc = this.frame.contentDocument || this.frame.contentWindow.document;
                     const frameWin = this.frame.contentWindow;
                     
-                    // Перехоплюємо кліки на посилання
+                    // Перехоплюємо ВСІ кліки (включаючи inline onclick)
                     frameDoc.addEventListener('click', (e) => {
-                        const link = e.target.closest('a[href], button[onclick*="location"], [onclick*="href"]');
+                        const link = e.target.closest('a[href], button[onclick], .icon-btn[onclick]');
                         if (link) {
                             const href = link.getAttribute('href') || '';
                             const onclick = link.getAttribute('onclick') || '';
                             
-                            // Визначаємо сторінку
                             let page = null;
                             
+                            // Перевірка href
                             if (href.includes('transport.html')) page = 'transport';
                             else if (href.includes('index.html')) page = 'index';
                             else if (href.includes('qr.html')) page = 'qr';
                             else if (href.includes('payment.html')) page = 'payment';
                             else if (href.includes('settings.html')) page = 'settings';
-                            else if (onclick.includes('transport.html')) page = 'transport';
-                            else if (onclick.includes('index.html')) page = 'index';
-                            else if (onclick.includes('qr.html')) page = 'qr';
-                            else if (onclick.includes('payment.html')) page = 'payment';
-                            else if (onclick.includes('settings.html')) page = 'settings';
+                            
+                            // Перевірка onclick
+                            if (!page && onclick) {
+                                if (onclick.includes('transport.html') || onclick.includes("transport.html")) page = 'transport';
+                                else if (onclick.includes('index.html') || onclick.includes("index.html")) page = 'index';
+                                else if (onclick.includes('qr.html') || onclick.includes("qr.html")) page = 'qr';
+                                else if (onclick.includes('payment.html') || onclick.includes("payment.html")) page = 'payment';
+                                else if (onclick.includes('settings.html') || onclick.includes("settings.html")) page = 'settings';
+                            }
                             
                             if (page) {
                                 e.preventDefault();
                                 e.stopPropagation();
+                                e.stopImmediatePropagation();
+                                
+                                // Зупинити камеру якщо це QR сторінка
+                                if (frameWin.stopQRCamera) {
+                                    frameWin.stopQRCamera();
+                                }
+                                
                                 window.parent.postMessage({ type: 'navigate', page: page }, '*');
                                 return false;
                             }
@@ -206,6 +225,13 @@
         
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', () => SPA.init());
+        
+        // Реєстрація Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('../service-worker.js')
+                .then((reg) => console.log('SW registered'))
+                .catch((err) => console.log('SW failed:', err));
+        }
     </script>
 </body>
 </html>
