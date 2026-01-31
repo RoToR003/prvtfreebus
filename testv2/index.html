@@ -517,8 +517,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js')
-                .then((reg) => console.log('SW registered'))
-                .catch((err) => console.log('SW failed:', err));
+                .then((reg) => console.log('Service worker registered successfully'))
+                .catch((err) => console.log('Service worker registration failed:', err));
         }
     </script>
 </body>

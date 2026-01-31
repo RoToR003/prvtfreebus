@@ -531,10 +531,7 @@
         function updateFullscreenOptionsVisibility() {
             const fullscreenOptions = document.getElementById('fullscreen-options');
             const isEnabled = isFullscreenFeatureEnabled();
-            
-            if (fullscreenOptions) {
-                fullscreenOptions.style.display = isEnabled ? 'block' : 'none';
-            }
+            fullscreenOptions.style.display = isEnabled ? 'block' : 'none';
         }
         
         // Ініціалізація стану перемикачів при завантаженні сторінки
