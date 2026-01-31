@@ -15,7 +15,17 @@ const CONFIG = {
     DBLCLICK_FULLSCREEN_KEY: 'dblclick_fullscreen_enabled',
     ALWAYS_FULLSCREEN_KEY: 'always_fullscreen_enabled',
     OFFLINE_MODE_KEY: 'offline_mode_enabled',
-    QR_SCAN_SCALE: 0.5 // 50% від оригінального розміру для швидшого сканування
+    QR_SCAN_SCALE: 0.5, // 50% від оригінального розміру для швидшого сканування
+    FULLSCREEN_RESTORE_DELAY: 100, // мс для відновлення fullscreen
+    FULLSCREEN_AUTO_RESTORE_DELAY: 500, // мс для авто-відновлення fullscreen
+    NOTIFICATION_DURATION: 3000, // мс для показу повідомлення
+    NOTIFICATION_ANIMATION_DURATION: 300, // мс для анімації повідомлення
+    NOTIFICATION_COLORS: {
+        success: '#5dc12d',
+        warning: '#ffa726',
+        error: '#ff4444',
+        info: '#3a3a3a'
+    }
 };
 
 // ============================================
@@ -1015,10 +1025,10 @@ function preloadPages() {
     ];
     
     pages.forEach(page => {
-        // Використовуємо fetch для попереднього завантаження в кеш браузера
+        // Використовуємо fetch для попереднього завантаження
+        // Service Worker обробить кешування з правильною стратегією
         fetch(page, { 
-            method: 'GET',
-            cache: 'force-cache' // Примусово використовувати кеш
+            method: 'GET'
         }).catch(err => {
             console.log('Не вдалося попередньо завантажити сторінку:', page, err);
         });
@@ -1177,7 +1187,7 @@ function toggleDoubleClickFullscreen() {
  */
 function isAlwaysFullscreenEnabled() {
     const enabled = localStorage.getItem(CONFIG.ALWAYS_FULLSCREEN_KEY);
-    return enabled === 'true'; // За замовчуванням вимкнено
+    return enabled === 'true'; // За замовчуванням вимкнено для кращого UX
 }
 
 /**
@@ -1209,7 +1219,8 @@ function toggleAlwaysFullscreen() {
  */
 function isOfflineModeEnabled() {
     const enabled = localStorage.getItem(CONFIG.OFFLINE_MODE_KEY);
-    return enabled === null || enabled === 'true'; // За замовчуванням увімкнено
+    // За замовчуванням увімкнено для підтримки PWA та автономної роботи
+    return enabled === null || enabled === 'true';
 }
 
 /**
@@ -1247,7 +1258,7 @@ function restoreFullscreenIfNeeded() {
             }).catch(err => {
                 console.log('Помилка відновлення fullscreen:', err);
             });
-        }, 100);
+        }, CONFIG.FULLSCREEN_RESTORE_DELAY);
     }
 }
 
@@ -1264,7 +1275,7 @@ function monitorFullscreenChanges() {
                     document.documentElement.requestFullscreen().catch(err => {
                         console.log('Не вдалося відновити fullscreen:', err);
                     });
-                }, 500);
+                }, CONFIG.FULLSCREEN_AUTO_RESTORE_DELAY);
             } else {
                 sessionStorage.removeItem(CONFIG.FULLSCREEN_KEY);
             }
@@ -1333,11 +1344,15 @@ function showNotification(message, type = 'info') {
         document.body.appendChild(notificationContainer);
     }
     
+    // Отримати колір для типу повідомлення
+    const bgColor = CONFIG.NOTIFICATION_COLORS[type] || CONFIG.NOTIFICATION_COLORS.info;
+    const textColor = type === 'warning' ? '#000' : '#fff';
+    
     // Створити повідомлення
     const notification = document.createElement('div');
     notification.style.cssText = `
-        background-color: ${type === 'success' ? '#5dc12d' : type === 'warning' ? '#ffa726' : type === 'error' ? '#ff4444' : '#3a3a3a'};
-        color: ${type === 'warning' ? '#000' : '#fff'};
+        background-color: ${bgColor};
+        color: ${textColor};
         padding: 14px 20px;
         border-radius: 8px;
         margin-bottom: 10px;
@@ -1380,13 +1395,13 @@ function showNotification(message, type = 'info') {
     
     notificationContainer.appendChild(notification);
     
-    // Автоматично приховати через 3 секунди
+    // Автоматично приховати через заданий час
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease-out';
+        notification.style.animation = `slideOut ${CONFIG.NOTIFICATION_ANIMATION_DURATION}ms ease-out`;
         setTimeout(() => {
             notification.remove();
-        }, 300);
-    }, 3000);
+        }, CONFIG.NOTIFICATION_ANIMATION_DURATION);
+    }, CONFIG.NOTIFICATION_DURATION);
 }
 
 /**

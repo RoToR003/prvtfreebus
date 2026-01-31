@@ -80,9 +80,11 @@ self.addEventListener('fetch', (event) => {
                             caches.open(CACHE_NAME).then((cache) => {
                                 cache.put(request, response.clone());
                             });
+                        } else if (response) {
+                            console.log('Фонове оновлення не вдалося, статус:', response.status, 'для', request.url);
                         }
-                    }).catch(() => {
-                        // Ігноруємо помилки мережі для фонового оновлення
+                    }).catch((error) => {
+                        console.log('Помилка фонового оновлення:', error, 'для', request.url);
                     });
                     return cachedResponse;
                 }
