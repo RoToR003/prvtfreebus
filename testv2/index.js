@@ -1160,6 +1160,11 @@ function toggleFullscreenFeature() {
             }
         }
     }
+    
+    // Update visibility of dependent fullscreen options
+    if (typeof updateFullscreenOptionsVisibility === 'function') {
+        updateFullscreenOptionsVisibility();
+    }
 }
 
 /**
