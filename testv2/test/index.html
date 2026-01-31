@@ -75,6 +75,7 @@
             currentPage: null,
             isTransitioning: false,
             history: [],
+            DEFAULT_PAGE: 'transport',
             
             pages: {
                 'transport': '../transport.html',
@@ -101,13 +102,13 @@
                 this.frame.addEventListener('load', () => this.onFrameLoad());
                 
                 // Початкова сторінка
-                const hash = window.location.hash.slice(1) || 'transport';
+                const hash = window.location.hash.slice(1) || this.DEFAULT_PAGE;
                 this.navigate(hash, true);
             },
             
             navigate(page, isInitial = false) {
                 if (!this.pages[page]) {
-                    page = 'transport';
+                    page = this.DEFAULT_PAGE;
                 }
                 
                 if (this.currentPage === page && !isInitial) return;
@@ -136,7 +137,7 @@
             },
             
             onHashChange() {
-                const hash = window.location.hash.slice(1) || 'transport';
+                const hash = window.location.hash.slice(1) || this.DEFAULT_PAGE;
                 if (hash !== this.currentPage && !this.isTransitioning) {
                     this.navigate(hash);
                 }
@@ -144,7 +145,7 @@
             
             onPopState(e) {
                 // Обробка кнопки "Назад"
-                const hash = window.location.hash.slice(1) || 'transport';
+                const hash = window.location.hash.slice(1) || this.DEFAULT_PAGE;
                 if (hash !== this.currentPage) {
                     // Не додаємо в history, бо це вже є навігація назад
                     if (this.isTransitioning) return;

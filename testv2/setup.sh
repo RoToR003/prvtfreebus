@@ -20,8 +20,12 @@ cp "$PROJECT_ROOT/index.js" "$SCRIPT_DIR/"
 
 # Copy test directory
 echo "Copying test directory..."
-mkdir -p "$SCRIPT_DIR/test"
-cp -r "$PROJECT_ROOT/test"/* "$SCRIPT_DIR/test/"
+if [ -d "$PROJECT_ROOT/test" ]; then
+    mkdir -p "$SCRIPT_DIR/test"
+    cp -r "$PROJECT_ROOT/test"/* "$SCRIPT_DIR/test/"
+else
+    echo "Warning: test directory not found in $PROJECT_ROOT/test"
+fi
 
 # Copy manifest and service worker
 echo "Copying PWA files..."
