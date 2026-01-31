@@ -165,27 +165,30 @@
         /* --- ПЕРЕМИКАЧ --- */
         .toggle-switch {
             position: relative;
-            width: 51px;
-            height: 31px;
-            background-color: #3a3a3a;
-            border-radius: 15.5px;
+            width: 50px;
+            height: 30px;
+            background-color: #4a4a4a;
+            border-radius: 15px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .toggle-switch.active {
             background-color: var(--green);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .toggle-slider {
             position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 25px;
-            height: 25px;
+            top: 2px;
+            left: 2px;
+            width: 26px;
+            height: 26px;
             background-color: #fff;
             border-radius: 50%;
-            transition: transform 0.3s;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .toggle-switch.active .toggle-slider {
@@ -410,31 +413,35 @@
                 <div class="toggle-slider"></div>
             </div>
         </div>
-
-        <div class="setting-item" onclick="toggleFullscreen()">
-            <div class="setting-info">
-                <div class="setting-label">Повноекранний режим</div>
-                <div class="setting-description">Негайно активувати/деактивувати повний екран</div>
-            </div>
-        </div>
         
+        <!-- PRIORITY: Main fullscreen feature toggle -->
         <div class="setting-item" onclick="toggleFullscreenFeature()">
             <div class="setting-info">
                 <div class="setting-label">Дозволити повноекранний режим</div>
-                <div class="setting-description">Повністю вимкнути або увімкнути можливість повного екрану</div>
+                <div class="setting-description">Увімкнути або вимкнути можливість повного екрану</div>
             </div>
             <div class="toggle-switch active" id="fullscreen-feature-toggle">
                 <div class="toggle-slider"></div>
             </div>
         </div>
         
-        <div class="setting-item" onclick="toggleDoubleClickFullscreen()">
-            <div class="setting-info">
-                <div class="setting-label">Повний екран по подвійному кліку</div>
-                <div class="setting-description">Подвійний клік вмикає повноекранний режим</div>
+        <!-- Dependent fullscreen options (shown only when feature is enabled) -->
+        <div id="fullscreen-options" style="display: block;">
+            <div class="setting-item" onclick="toggleFullscreen()">
+                <div class="setting-info">
+                    <div class="setting-label">Повноекранний режим</div>
+                    <div class="setting-description">Негайно активувати/деактивувати повний екран</div>
+                </div>
             </div>
-            <div class="toggle-switch active" id="dblclick-toggle">
-                <div class="toggle-slider"></div>
+            
+            <div class="setting-item" onclick="toggleDoubleClickFullscreen()">
+                <div class="setting-info">
+                    <div class="setting-label">Повний екран по подвійному кліку</div>
+                    <div class="setting-description">Подвійний клік вмикає повноекранний режим</div>
+                </div>
+                <div class="toggle-switch active" id="dblclick-toggle">
+                    <div class="toggle-slider"></div>
+                </div>
             </div>
         </div>
         
@@ -520,6 +527,16 @@
 
     <script src="index.js"></script>
     <script>
+        // Function to update visibility of fullscreen dependent options
+        function updateFullscreenOptionsVisibility() {
+            const fullscreenOptions = document.getElementById('fullscreen-options');
+            const isEnabled = isFullscreenFeatureEnabled();
+            
+            if (fullscreenOptions) {
+                fullscreenOptions.style.display = isEnabled ? 'block' : 'none';
+            }
+        }
+        
         // Ініціалізація стану перемикачів при завантаженні сторінки
         document.addEventListener('DOMContentLoaded', function() {
             // Перемикач для fullscreen feature
@@ -532,6 +549,9 @@
                     fullscreenFeatureToggle.classList.remove('active');
                 }
             }
+            
+            // Update visibility of dependent options
+            updateFullscreenOptionsVisibility();
             
             // Перемикач для double-click fullscreen
             const dblclickToggle = document.getElementById('dblclick-toggle');
