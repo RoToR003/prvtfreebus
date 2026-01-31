@@ -196,35 +196,45 @@
                         window.parent.history.back();
                     };
                     
-                    // Перехоплюємо ВСІ кліки (включаючи inline onclick)
+                    // Знайти всі елементи з onclick та перевизначити їх
+                    const elementsWithOnclick = frameDoc.querySelectorAll('[onclick]');
+                    elementsWithOnclick.forEach(el => {
+                        const onclick = el.getAttribute('onclick');
+                        let page = null;
+                        
+                        if (onclick.includes('transport.html')) page = 'transport';
+                        else if (onclick.includes('index.html')) page = 'index';
+                        else if (onclick.includes('qr.html')) page = 'qr';
+                        else if (onclick.includes('payment.html')) page = 'payment';
+                        else if (onclick.includes('settings.html')) page = 'settings';
+                        
+                        if (page) {
+                            // Видаляємо onclick та додаємо наш обробник
+                            el.removeAttribute('onclick');
+                            el.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.parent.postMessage({ type: 'navigate', page: page }, '*');
+                            });
+                        }
+                    });
+                    
+                    // Перехоплюємо ВСІ кліки (для елементів з href)
                     frameDoc.addEventListener('click', (e) => {
-                        const link = e.target.closest('a[href], button[onclick], .icon-btn[onclick], .back-btn');
+                        const link = e.target.closest('a[href]');
                         if (link) {
                             const href = link.getAttribute('href') || '';
-                            const onclick = link.getAttribute('onclick') || '';
-                            
                             let page = null;
                             
-                            // Перевірка href
                             if (href.includes('transport.html')) page = 'transport';
                             else if (href.includes('index.html')) page = 'index';
                             else if (href.includes('qr.html')) page = 'qr';
                             else if (href.includes('payment.html')) page = 'payment';
                             else if (href.includes('settings.html')) page = 'settings';
                             
-                            // Перевірка onclick
-                            if (!page && onclick) {
-                                if (onclick.includes('transport.html')) page = 'transport';
-                                else if (onclick.includes('index.html')) page = 'index';
-                                else if (onclick.includes('qr.html')) page = 'qr';
-                                else if (onclick.includes('payment.html')) page = 'payment';
-                                else if (onclick.includes('settings.html')) page = 'settings';
-                            }
-                            
                             if (page) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                e.stopImmediatePropagation();
                                 
                                 // Зупинити камеру якщо це QR сторінка
                                 if (frameWin.stopQRCamera) {
@@ -236,28 +246,6 @@
                             }
                         }
                     }, true);
-                    
-                    // Перехоплюємо пряме присвоєння location.href
-                    const originalLocationSetter = Object.getOwnPropertyDescriptor(frameWin.Location.prototype, 'href').set;
-                    Object.defineProperty(frameWin.location, 'href', {
-                        set: function(value) {
-                            let page = null;
-                            if (value.includes('transport.html')) page = 'transport';
-                            else if (value.includes('index.html')) page = 'index';
-                            else if (value.includes('qr.html')) page = 'qr';
-                            else if (value.includes('payment.html')) page = 'payment';
-                            else if (value.includes('settings.html')) page = 'settings';
-                            
-                            if (page) {
-                                window.parent.postMessage({ type: 'navigate', page: page }, '*');
-                            } else {
-                                originalLocationSetter.call(this, value);
-                            }
-                        },
-                        get: function() {
-                            return frameWin.location.href;
-                        }
-                    });
                     
                 } catch (err) {
                     console.log('Cannot inject navigation override:', err);
