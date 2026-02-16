@@ -665,7 +665,7 @@ function goToPayment() {
  * Ініціалізація QR сторінки
  */
 function initQRPage() {
-    // Reset payment processing flag
+    // Скинути прапорець обробки платежу
     qrCameraState.paymentProcessing = false;
     
     // Start camera
