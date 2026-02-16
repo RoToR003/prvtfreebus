@@ -441,7 +441,8 @@ function displayTicketsOnIndexPage() {
 let qrCameraState = {
     currentFacingMode: 'environment',
     currentDeviceId: null,
-    scanningActive: false
+    scanningActive: false,
+    paymentProcessing: false
 };
 
 /**
@@ -578,6 +579,11 @@ function scanQRCode() {
         
         if (code) {
             console.log("QR-код розпізнано:", code.data);
+            
+            // Запобігти повторним викликам
+            if (qrCameraState.paymentProcessing) return;
+            qrCameraState.paymentProcessing = true;
+            
             qrCameraState.scanningActive = false;
             stopQRCamera();
             sessionStorage.setItem('qr_scanned', 'true');
@@ -648,6 +654,9 @@ function goToPayment() {
  * Ініціалізація QR сторінки
  */
 function initQRPage() {
+    // Скинути прапорець обробки платежу
+    qrCameraState.paymentProcessing = false;
+    
     // Start camera
     startQRCamera();
     
@@ -674,16 +683,6 @@ function initQRPage() {
     if (paymentBtn) {
         paymentBtn.removeAttribute('onclick');
         paymentBtn.addEventListener('click', goToPayment);
-    }
-    
-    // При кліку на overlay також переходити на оплату
-    const overlay = document.querySelector('.overlay');
-    if (overlay) {
-        overlay.addEventListener('click', function(e) {
-            if (!e.target.closest('.icon-btn') && !e.target.closest('.circle-btn')) {
-                goToPayment();
-            }
-        });
     }
 }
 
